@@ -1,0 +1,82 @@
+Goal: Build a scalable, SEO-first, AI-enriched directory for pubs in Bangalore with programmatic city pillar pages, badge/backlink generator, and schema-rich rendering.
+
+The plan should include:
+Development phases with detailed tasks
+DB schema & migrations
+API routes
+Frontend page structure
+Admin & claim workflows
+AI content automation (Claude/GPT)
+SEO & schema setup
+QA and launch checklist
+
+🔧 Tech Stack
+Layer	Tool	Purpose
+Framework	Next.js (App Router, TypeScript)	React + SSG + ISR
+Styling	Tailwind CSS	Responsive minimalist UI
+Database / Auth	Supabase (Postgres + Auth + Storage)	Data, authentication, and file uploads
+Hosting	Vercel + GitHub	CI/CD + edge deploy
+Maps / Geodata	OpenStreetMap + Nominatim	Free map and geocoding
+AI Integration	Claude / GPT-4	Generate descriptions, FAQs, JSON-LD schema
+Search	Supabase Full-Text Search	Lightweight local search
+Analytics	Google Analytics + Search Console	Performance and SEO tracking
+
+
+🧱 Core Features to Implement
+
+1.City-Specific Pillar Pages
+
+-/pubs/in/[locality-slug]
+
+-AI-generated intro + FAQs
+
+-List of pubs + structured schema
+
+-Internal links to nearby areas
+
+2 Pub Listings
+
+/pubs/[pub-slug]
+
+SEO-rich H2s, address, map, AI description, opening hours, schema
+
+
+
+3. Badge Generator & Backlink System
+
+Generate embeddable HTML badge (<a> + <img>)
+
+“Proudly listed on PubsInBangalore.com”
+
+Encourage backlinks & verify via email
+
+4. AI Enrichment Pipeline
+
+Use Claude/GPT to generate:
+
+Listing descriptions (2–3 lines)
+
+City FAQs (5–10 Q&As)
+
+JSON-LD schema (LocalBusiness, ItemList, FAQPage)
+
+Store results in Supabase fields.
+
+
+4. SEO & Technical Setup
+
+Dynamic sitemaps
+
+Canonical tags
+
+Structured schema validation
+
+Fast performance (ISR + minimal JS)
+
+Mobile-optimized UI
+
+5.Admin Dashboard
+For updataing Pubs Information. 
+
+
+
