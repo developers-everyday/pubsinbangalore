@@ -9,6 +9,7 @@ import {
   updatePubAction,
   uploadCsvAction,
 } from "./actions";
+import { CsvDropzone } from "./csv-dropzone";
 import { getServiceSupabaseClient } from "@/lib/supabase/server";
 import type { Database, Json } from "@/lib/supabase/types";
 import type { ReactNode } from "react";
@@ -214,13 +215,9 @@ export default async function AdminDashboard() {
           >
             <label className="text-sm font-medium text-slate-200">
               Upload CSV
-              <input
-                type="file"
-                name="csv"
-                accept=".csv"
-                className="mt-2 block w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-                required
-              />
+              <div className="mt-3">
+                <CsvDropzone />
+              </div>
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" name="dryRun" defaultChecked className="h-4 w-4" /> Dry run only
