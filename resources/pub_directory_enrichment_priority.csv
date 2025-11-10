@@ -1,0 +1,31 @@
+Tier,Attribute_Name,Data_Format,Search_Volume_Indicator,Implementation_Notes
+Tier 1 - Essential (Must Have),Rooftop Seating,Boolean (Yes/No),★★★★★,Highly searched term; enables filtering
+Tier 1 - Essential (Must Have),Dance Floor,Boolean (Yes/No),★★★★★,Critical for party/club seekers
+Tier 1 - Essential (Must Have),Live Music,Boolean + Text (Genre),★★★★★,Add genre tags; weekend vs weekday schedules
+Tier 1 - Essential (Must Have),Outdoor Seating,Boolean (Yes/No),★★★★★,Include terrace/garden/smoking area details
+Tier 1 - Essential (Must Have),Craft Beer/Microbrewery,Boolean (Yes/No),★★★★★,Major decision factor; list beer brands if possible
+Tier 1 - Essential (Must Have),Music Type/Genre,Tags (Rock/Bollywood/English/EDM/Retro),★★★★★,Most complained topic - music matters a lot
+Tier 1 - Essential (Must Have),Stag Entry Policy,Text (Allowed/Not Allowed/Cover Charge Amount),★★★★★,Major pain point for male groups; clear policy needed
+Tier 1 - Essential (Must Have),Happy Hour Timing,"Time Range (e.g., 12PM-6PM)",★★★★★,Time ranges important; extended hours are USP
+Tier 1 - Essential (Must Have),Average Cost for Two,Numeric Range (₹500-₹2500),★★★★★,Budget is #1 search filter after location
+Tier 1 - Essential (Must Have),Parking Available,Boolean + Text (Yes/Valet/Street),★★★★★,HSR/Koramangala users specifically search this
+Tier 1 - Essential (Must Have),Food Quality Rating,Rating (1-5) + Reviews,★★★★★,User reviews mention food quality frequently
+Tier 1 - Essential (Must Have),Cover Charges,"Numeric (₹0, ₹500, ₹1000, ₹2000)",★★★★★,Transparency critical; mention if redeemable
+Tier 2 - High Value,Multiple Floors/Levels,"Numeric (2, 3, 4 floors)",★★★★☆,Different floors = different vibes
+Tier 2 - High Value,Theme Nights Schedule,"Text/Schedule (Ladies Night Thu, Rock Night Fri)",★★★★☆,Ladies nights drive traffic; update weekly
+Tier 2 - High Value,View Type (City/Garden/Metro),Tag (Rooftop View/Garden/Metro View/City Skyline),★★★★☆,Rooftop with view is premium selling point
+Tier 2 - High Value,Couples Entry Policy,Text (Free/Cover Charge/Not Allowed),★★★★☆,Important for group planning
+Tier 2 - High Value,Free Entry Days,"Tags (Monday Ladies Free, Friday Couples Free)",★★★★☆,Weekly promotions; keep updated
+Tier 2 - High Value,Redeemable Cover Charges,Boolean (Yes/No),★★★★☆,Budget-conscious users check this
+Tier 2 - High Value,Beer Variety (Wheat/Stout/Lager),Tags (Wheat/Stout/Lager/IPA/Belgian),★★★★☆,Craft beer enthusiasts care about variety
+Tier 2 - High Value,Operating Hours,"Text (12PM-1AM Mon-Thu, 12PM-12:30AM Fri-Sat)",★★★★☆,Late night (1AM+) is differentiator
+Tier 2 - High Value,Service Quality Rating,Rating (1-5) + Text,★★★★☆,Wait times & staff behavior frequently mentioned
+Tier 2 - High Value,Happy Hour Deals Type,"Text (Buy 1 Get 1, 30% Off, 50% Off on Beer)",★★★★☆,1+1 deals most popular; update regularly
+Tier 3 - Nice to Have,Sports Screening,Boolean (Yes/No),★★★☆☆,Cricket/Football match days drive traffic
+Tier 3 - Nice to Have,Karaoke Available,Boolean (Yes/No),★★★☆☆,Bob's Bar & The Local mentioned for this
+Tier 3 - Nice to Have,Buffet Options,Text (Veg/Non-veg/Sunday Brunch),★★★☆☆,Value-for-money crowd seeks this
+Tier 3 - Nice to Have,Valet Service,Boolean (Yes/No),★★★☆☆,Premium pubs highlight this feature
+Tier 3 - Nice to Have,Food Cuisines Available,Tags (Italian/Asian/Indian/Continental/Thai),★★★☆☆,"South Indian, Italian, Asian most sought"
+Tier 3 - Nice to Have,Wheelchair Accessible,Boolean (Yes/No),★★☆☆☆,Inclusivity feature; rare but important
+Tier 3 - Nice to Have,Crowd Type/Age Group,Text (Young 20s/Mixed/30s+/Professional),★★★☆☆,"30s+ crowd seeks quieter, quality venues"
+Tier 3 - Nice to Have,WiFi Available,Boolean (Yes/No),★★☆☆☆,Co-working crowd appreciates this
