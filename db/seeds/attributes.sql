@@ -1,0 +1,33 @@
+-- Seed attribute dictionary aligned with docs/data-taxonomy.md
+insert into public.attributes (code, label, description, tier, data_type)
+values
+    ('rooftop_seating', 'Rooftop Seating', 'Dedicated rooftop or terrace seating area.', 'tier1', 'boolean'),
+    ('dance_floor', 'Dance Floor', 'Permanent dance floor available.', 'tier1', 'boolean'),
+    ('live_music', 'Live Music', 'Regular live music performances.', 'tier1', 'boolean'),
+    ('music_genres', 'Music Genres', 'Primary music styles featured.', 'tier1', 'tag_set'),
+    ('outdoor_seating', 'Outdoor Seating', 'Outdoor/patio seating.', 'tier1', 'boolean'),
+    ('craft_beer', 'Craft Beer / Microbrewery', 'On-site brewery or craft beer taps.', 'tier1', 'boolean'),
+    ('stag_entry_policy', 'Stag Entry Policy', 'Entry rules for solo/men groups.', 'tier1', 'text'),
+    ('happy_hour_schedule', 'Happy Hour Schedule', 'Recurring happy hour timing.', 'tier1', 'schedule'),
+    ('cost_for_two_range', 'Cost for Two Range', 'Average spend for two people (INR).', 'tier1', 'integer_range'),
+    ('parking_available', 'Parking Available', 'Parking availability notes.', 'tier1', 'boolean'),
+    ('food_quality_rating', 'Food Quality Rating', 'Curated 1-5 score for food.', 'tier1', 'rating'),
+    ('cover_charge_range', 'Cover Charge Range', 'Typical cover charge (INR).', 'tier1', 'integer_range'),
+    ('floor_count', 'Number of Floors', 'Distinct guest-facing levels.', 'tier2', 'integer'),
+    ('theme_nights', 'Theme Nights', 'Recurring theme night schedule.', 'tier2', 'schedule'),
+    ('view_type', 'View Type', 'Signature view from venue.', 'tier2', 'tag_set'),
+    ('couples_entry_policy', 'Couples Entry Policy', 'Entry rules for couples.', 'tier2', 'text'),
+    ('free_entry_days', 'Free Entry Days', 'Days with waived cover.', 'tier2', 'tag_set'),
+    ('cover_redeemable', 'Redeemable Cover', 'Cover charge redeemable on spends.', 'tier2', 'boolean'),
+    ('beer_variety', 'Beer Variety', 'Available beer styles.', 'tier2', 'tag_set'),
+    ('late_night_hours', 'Operating Hours', 'Extended operating hours summary.', 'tier2', 'text'),
+    ('service_quality_rating', 'Service Quality Rating', 'Curated 1-5 score for service.', 'tier2', 'rating'),
+    ('happy_hour_deals', 'Happy Hour Deals', 'Types of deals during happy hour.', 'tier2', 'tag_set'),
+    ('sports_screening', 'Sports Screening', 'Live sports screenings.', 'tier3', 'boolean'),
+    ('karaoke', 'Karaoke Available', 'Dedicated karaoke setup.', 'tier3', 'boolean'),
+    ('buffet_options', 'Buffet Options', 'Buffet offerings.', 'tier3', 'tag_set'),
+    ('valet_service', 'Valet Service', 'Valet parking availability.', 'tier3', 'boolean'),
+    ('food_cuisines', 'Food Cuisines', 'Cuisine mix served.', 'tier3', 'tag_set'),
+    ('crowd_profile', 'Crowd Profile', 'Typical age group / vibe.', 'tier3', 'text'),
+    ('wifi', 'WiFi Availability', 'Guest WiFi access.', 'tier3', 'boolean')
+on conflict (code) do nothing;

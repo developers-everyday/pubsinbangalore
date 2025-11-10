@@ -72,7 +72,14 @@ create table if not exists public.pubs (
 create unique index if not exists idx_pubs_name_slug on public.pubs (lower(name), slug);
 create index if not exists idx_pubs_status on public.pubs (status);
 create index if not exists idx_pubs_rating on public.pubs (average_rating desc, review_count desc);
-create index if not exists idx_pubs_textsearch on public.pubs using gin (to_tsvector('english', coalesce(name, '') || " " || coalesce(description, '')));
+
+alter table public.pubs
+    add column if not exists tsv tsvector
+        generated always as (
+            to_tsvector('english', coalesce(name, '') || ' ' || coalesce(description, ''))
+        ) stored;
+
+create index if not exists idx_pubs_tsv on public.pubs using gin (tsv);
 
 do $$
 begin
@@ -193,18 +200,17 @@ alter table public.profiles enable row level security;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'profiles_self_access'
+        select 1 from pg_policies where policyname = 'profiles_self_access'
     ) then
         create policy profiles_self_access on public.profiles
-        for select using (auth.uid() = id)
-        with check (auth.uid() = id);
+        for select using (auth.uid() = id);
     end if;
 end $$;
 
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'profiles_admin_manage'
+        select 1 from pg_policies where policyname = 'profiles_admin_manage'
     ) then
         create policy profiles_admin_manage on public.profiles
         for all using (auth.role() = 'service_role')
@@ -305,7 +311,7 @@ alter table public.community_reports enable row level security;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'localities_public_read'
+        select 1 from pg_policies where policyname = 'localities_public_read'
     ) then
         create policy localities_public_read on public.localities
         for select using (true);
@@ -315,7 +321,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pubs_public_read'
+        select 1 from pg_policies where policyname = 'pubs_public_read'
     ) then
         create policy pubs_public_read on public.pubs
         for select using (true);
@@ -325,7 +331,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pubs_service_role_write'
+        select 1 from pg_policies where policyname = 'pubs_service_role_write'
     ) then
         create policy pubs_service_role_write on public.pubs
         for all using (auth.role() = 'service_role')
@@ -336,7 +342,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'attributes_public_read'
+        select 1 from pg_policies where policyname = 'attributes_public_read'
     ) then
         create policy attributes_public_read on public.attributes
         for select using (true);
@@ -346,7 +352,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'attributes_service_role_write'
+        select 1 from pg_policies where policyname = 'attributes_service_role_write'
     ) then
         create policy attributes_service_role_write on public.attributes
         for all using (auth.role() = 'service_role')
@@ -357,7 +363,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pub_localities_public_read'
+        select 1 from pg_policies where policyname = 'pub_localities_public_read'
     ) then
         create policy pub_localities_public_read on public.pub_localities
         for select using (true);
@@ -367,7 +373,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pub_localities_service_role_write'
+        select 1 from pg_policies where policyname = 'pub_localities_service_role_write'
     ) then
         create policy pub_localities_service_role_write on public.pub_localities
         for all using (auth.role() = 'service_role')
@@ -378,7 +384,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pub_attribute_values_public_read'
+        select 1 from pg_policies where policyname = 'pub_attribute_values_public_read'
     ) then
         create policy pub_attribute_values_public_read on public.pub_attribute_values
         for select using (true);
@@ -388,7 +394,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pub_attribute_values_service_role_write'
+        select 1 from pg_policies where policyname = 'pub_attribute_values_service_role_write'
     ) then
         create policy pub_attribute_values_service_role_write on public.pub_attribute_values
         for all using (auth.role() = 'service_role')
@@ -399,7 +405,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'ai_content_jobs_service_role_only'
+        select 1 from pg_policies where policyname = 'ai_content_jobs_service_role_only'
     ) then
         create policy ai_content_jobs_service_role_only on public.ai_content_jobs
         for all using (auth.role() = 'service_role')
@@ -410,7 +416,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pub_claims_service_role_manage'
+        select 1 from pg_policies where policyname = 'pub_claims_service_role_manage'
     ) then
         create policy pub_claims_service_role_manage on public.pub_claims
         for all using (auth.role() = 'service_role')
@@ -421,7 +427,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'pub_change_history_service_role'
+        select 1 from pg_policies where policyname = 'pub_change_history_service_role'
     ) then
         create policy pub_change_history_service_role on public.pub_change_history
         for all using (auth.role() = 'service_role')
@@ -432,7 +438,7 @@ end $$;
 do $$
 begin
     if not exists (
-        select 1 from pg_policies where polname = 'community_reports_service_role_manage'
+        select 1 from pg_policies where policyname = 'community_reports_service_role_manage'
     ) then
         create policy community_reports_service_role_manage on public.community_reports
         for all using (auth.role() = 'service_role')
@@ -440,3 +446,5 @@ begin
     end if;
 end $$;
 
+-- Reload PostgREST schema cache after running this script
+NOTIFY pgrst, 'reload schema';
