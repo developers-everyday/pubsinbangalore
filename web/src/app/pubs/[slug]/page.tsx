@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 
 import { PubCard } from "@/components/pubs/pub-card";
 import { getLocalityPageData, getPubDetail } from "@/lib/supabase/queries";
+import { formatGoogleRating } from "@/lib/utils/ratings";
+import { PlatformRatings } from "@/components/pubs/platform-ratings";
 
 export const revalidate = 300;
 
@@ -25,9 +27,10 @@ const formatCost = (min: number | null, max: number | null) => {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const pub = await getPubDetail(params.slug);
+  const resolvedParams = await params;
+  const pub = await getPubDetail(resolvedParams.slug);
   if (!pub) {
     return {
       title: "Pub not found",
@@ -54,9 +57,10 @@ export async function generateMetadata({
 export default async function PubDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const pub = await getPubDetail(params.slug);
+  const resolvedParams = await params;
+  const pub = await getPubDetail(resolvedParams.slug);
 
   if (!pub) {
     notFound();
@@ -163,8 +167,23 @@ export default async function PubDetailPage({
             )}
             <div className="flex flex-wrap gap-3 text-sm text-slate-600">
               {pub.average_rating && (
-                <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
-                  {pub.average_rating.toFixed(1)} ★ ({pub.review_count?.toLocaleString()} reviews)
+                <Link
+                  href={pub.google_maps_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                >
+                  {formatGoogleRating(pub.average_rating, pub.review_count)}
+                </Link>
+              )}
+              {pub.overall_rating_average && (
+                <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
+                  Overall: {pub.overall_rating_average.toFixed(1)} ★
+                  {pub.overall_rating_min && pub.overall_rating_max && (
+                    <span className="ml-1 text-xs font-normal">
+                      ({pub.overall_rating_min.toFixed(1)}-{pub.overall_rating_max.toFixed(1)})
+                    </span>
+                  )}
                 </span>
               )}
               <span className="rounded-full bg-slate-100 px-3 py-1 capitalize">
@@ -261,6 +280,19 @@ export default async function PubDetailPage({
               </span>
             ))}
           </div>
+        </section>
+      )}
+
+      {pub.platform_ratings.length > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <PlatformRatings platformRatings={pub.platform_ratings} />
+        </section>
+      )}
+
+      {pub.overall_rating_details && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Overall Rating</h2>
+          <p className="mt-2 text-sm text-slate-600">{pub.overall_rating_details}</p>
         </section>
       )}
 

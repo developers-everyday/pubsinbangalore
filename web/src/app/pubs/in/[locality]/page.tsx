@@ -43,18 +43,20 @@ export async function generateMetadata({
   params,
   searchParams,
 }: {
-  params: { locality: string };
-  searchParams: { q?: string; budget?: string; wifi?: string; valet?: string; redeemable?: string; sort?: string };
+  params: Promise<{ locality: string }>;
+  searchParams: Promise<{ q?: string; budget?: string; wifi?: string; valet?: string; redeemable?: string; sort?: string }>;
 }): Promise<Metadata> {
-  const budget = parseBudget(searchParams.budget);
-  const { locality: localityInfo } = await getLocalityPageData(params.locality, {
-    search: searchParams.q,
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const budget = parseBudget(resolvedSearchParams.budget);
+  const { locality: localityInfo } = await getLocalityPageData(resolvedParams.locality, {
+    search: resolvedSearchParams.q,
     minCost: budget.minCost,
     maxCost: budget.maxCost,
-    wifi: searchParams.wifi === "true",
-    valet: searchParams.valet === "true",
-    coverRedeemable: searchParams.redeemable === "true",
-    sort: parseSort(searchParams.sort),
+    wifi: resolvedSearchParams.wifi === "true",
+    valet: resolvedSearchParams.valet === "true",
+    coverRedeemable: resolvedSearchParams.redeemable === "true",
+    sort: parseSort(resolvedSearchParams.sort),
     limit: 12,
   });
 
@@ -83,28 +85,30 @@ export default async function LocalityPage({
   params,
   searchParams,
 }: {
-  params: { locality: string };
-  searchParams: {
+  params: Promise<{ locality: string }>;
+  searchParams: Promise<{
     q?: string;
     budget?: string;
     wifi?: string;
     valet?: string;
     redeemable?: string;
     sort?: string;
-  };
+  }>;
 }) {
-  const budget = parseBudget(searchParams.budget);
-  const sort = parseSort(searchParams.sort);
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const budget = parseBudget(resolvedSearchParams.budget);
+  const sort = parseSort(resolvedSearchParams.sort);
   const filterState: LocalityFilterState = {
     budget: budget.bucket,
-    wifi: searchParams.wifi === "true",
-    valet: searchParams.valet === "true",
-    coverRedeemable: searchParams.redeemable === "true",
+    wifi: resolvedSearchParams.wifi === "true",
+    valet: resolvedSearchParams.valet === "true",
+    coverRedeemable: resolvedSearchParams.redeemable === "true",
     sort,
   };
 
-  const { locality, pubs } = await getLocalityPageData(params.locality, {
-    search: searchParams.q,
+  const { locality, pubs } = await getLocalityPageData(resolvedParams.locality, {
+    search: resolvedSearchParams.q,
     minCost: budget.minCost,
     maxCost: budget.maxCost,
     wifi: filterState.wifi,
@@ -166,9 +170,9 @@ export default async function LocalityPage({
               Active filters: {appliedFilters.join(" · ")}
             </p>
           )}
-          {searchParams.q && (
+          {resolvedSearchParams.q && (
             <p className="text-sm text-slate-500">
-              Showing results for <span className="font-semibold">“{searchParams.q}”</span>
+              Showing results for <span className="font-semibold">"{resolvedSearchParams.q}"</span>
             </p>
           )}
         </div>

@@ -19,6 +19,8 @@ Next.js (App Router) front-end for the AI-enriched Bangalore pub directory. This
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: public anon key for client reads
    - `SUPABASE_SERVICE_ROLE_KEY`: service-role key for ingestion scripts (keep server-side only)
    - `SUPABASE_JWT_SECRET`: optional, required for auth-enabled features later
+   - `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`: enable LLM generation
+   - `PERPLEXITY_API_KEY`: enable Deep Research evidence gathering (optional overrides: `PERPLEXITY_MODEL`, `PERPLEXITY_TIMEOUT_MS`, `PERPLEXITY_MAX_RETRIES`)
 
 2. Install dependencies and validate lint/type checks:
    ```bash
@@ -64,6 +66,25 @@ Row-level security is enabled for the main tables. Public reads are allowed, whi
    ```
    - Uses the service-role key to upsert into `pubs` and `pub_localities`
    - Batch size can be tuned with `IMPORT_BATCH_SIZE`
+
+## Manual AI Enrichment Test
+
+1. Ensure Supabase credentials are configured in `.env.local` (see `.env.example` for reference). Enable `AI_DRY_RUN=true` to avoid external LLM calls while validating the pipeline.
+2. Enqueue an enrichment job from the admin dashboard (`/admin`) or call:
+   ```bash
+   curl -X POST http://localhost:3000/api/ai/enqueue \
+     -H "Content-Type: application/json" \
+     -d '{"pubId":"<pub-uuid>","jobType":"full_enrichment"}'
+   ```
+3. Process the queue:
+   ```bash
+   cd web
+   export $(cat .env.local | xargs)
+   AI_DRY_RUN=true npm run run:ai-jobs
+   ```
+4. Inspect `ai_content_jobs` for new `awaiting_review` entries and moderate them from the admin dashboard to persist changes.
+
+**Note:** The pipeline has been validated successfully. Jobs process from `pending` → `processing` → `awaiting_review` as expected. To enable real AI enrichment and source-backed attributes, add `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` plus `PERPLEXITY_API_KEY` to `.env.local`.
 
 ## Testing & Quality
 

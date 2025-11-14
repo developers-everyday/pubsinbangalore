@@ -1,4 +1,6 @@
 import type { PubDetail } from "@/lib/supabase/queries";
+import type { AttributeEvidence } from "@/lib/ai/types";
+import { ATTRIBUTE_METADATA } from "@/lib/data/attributes";
 
 export function buildDescriptionPrompt(pub: PubDetail) {
   const contextLines = [
@@ -30,38 +32,56 @@ Context:
 ${contextLines.map((line) => `- ${line}`).join("\n")}`;
 }
 
-const ATTRIBUTE_CODES = [
-  "rooftop_seating",
-  "dance_floor",
-  "live_music",
-  "music_genres",
-  "outdoor_seating",
-  "craft_beer",
-  "parking_available",
-  "cover_redeemable",
-  "wifi",
-  "valet_service",
-  "sports_screening",
-  "happy_hour_schedule",
-  "happy_hour_deals",
-  "theme_nights",
-];
+type AttributePromptOptions = {
+  evidence?: Record<string, AttributeEvidence>;
+};
 
-export function buildAttributePrompt(pub: PubDetail) {
+export function buildAttributePrompt(pub: PubDetail, options: AttributePromptOptions = {}) {
   const costContext = pub.cost_for_two_min || pub.cost_for_two_max
     ? `Cost for two range: ${pub.cost_for_two_min ?? "?"}-${pub.cost_for_two_max ?? "?"}.`
     : "Cost data unavailable.";
+
+  const attributeGuidance = ATTRIBUTE_METADATA.map((attribute) => {
+    return `- ${attribute.code} (${attribute.label}) [${attribute.dataType}, ${attribute.tier}]: ${attribute.guidance}`;
+  }).join("\n");
+
+  const evidenceDetails =
+    options.evidence && Object.keys(options.evidence).length > 0
+      ? Object.entries(options.evidence)
+          .map(([code, details]) => {
+            const citations = details.citations
+              .map((citation, index) => `${index + 1}. ${citation.url}${citation.snippet ? ` — ${citation.snippet}` : ""}`)
+              .join("\n");
+            return `Attribute: ${code}
+Suggested value: ${JSON.stringify(details.value)}
+Reasoning: ${details.reasoning ?? "n/a"}
+Sources:
+${citations || "None"}`;
+          })
+          .join("\n\n")
+      : "No third-party evidence supplied.";
 
   return `You are a classifier converting nightlife venue details into structured attributes.
 Return a JSON object with key "attributes", mapping attribute codes to values.
 
 Rules:
-- Supported attribute codes: ${ATTRIBUTE_CODES.join(", ")}.
-- Boolean values must be true/false.
-- Lists must be arrays of strings.
-- Schedules must be objects with day keys (monday, tuesday...) each mapping to array of {"start","end","label"}.
-- If data is unknown, omit the code entirely.
-- Never fabricate details.
+- Only include keys when the venue information clearly supports them; otherwise omit the code entirely.
+- Boolean values must be true/false (no strings).
+- Tag sets must be arrays of descriptive strings (lowercase, trimmed).
+- Integer values must be whole numbers.
+- Integer ranges must be objects with numeric "min" and "max" (use same value for both if fixed).
+- Ratings must be numeric 1-5 (decimals allowed).
+- Schedules must be objects with weekday keys (monday–sunday) each mapping to an array of {"start","end","label"}.
+- Text fields should be concise (max 20 words) and factual.
+- Never output placeholder values such as "unknown", "n/a", empty objects, or zero ranges; simply omit that attribute when data is missing.
+- Do not return null unless the attribute explicitly supports null (ratings may be omitted instead of null).
+- Never fabricate details; prefer omitting the attribute instead of guessing.
+
+Attribute reference:
+${attributeGuidance}
+
+Third-party evidence:
+${evidenceDetails}
 
 Venue summary:
 Name: ${pub.name}

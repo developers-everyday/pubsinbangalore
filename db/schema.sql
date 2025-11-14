@@ -65,6 +65,11 @@ create table if not exists public.pubs (
     valet_available boolean,
     happy_hours_note text,
     operating_hours_raw jsonb,
+    overall_rating_average numeric(2,1),
+    overall_rating_min numeric(2,1),
+    overall_rating_max numeric(2,1),
+    overall_rating_details text,
+    ratings_last_synced_at timestamptz,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
@@ -249,6 +254,37 @@ end $$;
 create index if not exists idx_ai_content_jobs_status on public.ai_content_jobs (status);
 create index if not exists idx_ai_content_jobs_pub on public.ai_content_jobs (pub_id);
 
+-- 6b. Platform ratings (Google, Zomato, TripAdvisor, etc.)
+create table if not exists public.pub_platform_ratings (
+    pub_id uuid not null references public.pubs(id) on delete cascade,
+    platform text not null,
+    rating numeric(2,1) not null,
+    review_count integer,
+    details text,
+    citation_source text not null,
+    citation_url text not null,
+    last_updated timestamptz not null default now(),
+    is_growing boolean not null default false,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (pub_id, platform)
+);
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_trigger where tgname = 'trg_pub_platform_ratings_updated_at'
+    ) then
+        create trigger trg_pub_platform_ratings_updated_at
+        before update on public.pub_platform_ratings
+        for each row
+        execute procedure public.set_updated_at();
+    end if;
+end $$;
+
+create index if not exists idx_pub_platform_ratings_pub on public.pub_platform_ratings (pub_id);
+create index if not exists idx_pub_platform_ratings_platform on public.pub_platform_ratings (platform);
+
 -- 7. Ownership claims
 create table if not exists public.pub_claims (
     id uuid primary key default uuid_generate_v4(),
@@ -303,6 +339,7 @@ alter table public.pubs enable row level security;
 alter table public.pub_localities enable row level security;
 alter table public.attributes enable row level security;
 alter table public.pub_attribute_values enable row level security;
+alter table public.pub_platform_ratings enable row level security;
 alter table public.ai_content_jobs enable row level security;
 alter table public.pub_claims enable row level security;
 alter table public.pub_change_history enable row level security;
@@ -397,6 +434,27 @@ begin
         select 1 from pg_policies where policyname = 'pub_attribute_values_service_role_write'
     ) then
         create policy pub_attribute_values_service_role_write on public.pub_attribute_values
+        for all using (auth.role() = 'service_role')
+        with check (auth.role() = 'service_role');
+    end if;
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_policies where policyname = 'pub_platform_ratings_public_read'
+    ) then
+        create policy pub_platform_ratings_public_read on public.pub_platform_ratings
+        for select using (true);
+    end if;
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_policies where policyname = 'pub_platform_ratings_service_role_write'
+    ) then
+        create policy pub_platform_ratings_service_role_write on public.pub_platform_ratings
         for all using (auth.role() = 'service_role')
         with check (auth.role() = 'service_role');
     end if;

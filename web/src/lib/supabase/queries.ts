@@ -23,6 +23,16 @@ export interface PubAttribute {
   displayValue: string | null;
 }
 
+export interface PlatformRating {
+  platform: string;
+  rating: number;
+  review_count: number | null;
+  details: string | null;
+  citation_source: string;
+  citation_url: string;
+  is_growing: boolean;
+}
+
 export interface PubSummary {
   id: string;
   name: string;
@@ -44,6 +54,7 @@ export interface PubSummary {
   happy_hours_note: string | null;
   locality_slug: string | null;
   locality_name: string | null;
+  attributeCodes?: string[];
 }
 
 export interface PubDetail extends PubSummary {
@@ -51,6 +62,11 @@ export interface PubDetail extends PubSummary {
   status: string;
   operating_hours_raw: Record<string, string> | null;
   attributes: PubAttribute[];
+  platform_ratings: PlatformRating[];
+  overall_rating_average: number | null;
+  overall_rating_min: number | null;
+  overall_rating_max: number | null;
+  overall_rating_details: string | null;
 }
 
 export interface LocalityQueryOptions {
@@ -229,7 +245,11 @@ async function fetchPubsForLocality(
   let query = client
     .from("pubs")
     .select(
-      `*, pub_localities!inner(locality_id, is_primary)`
+      `*, pub_localities!inner(locality_id, is_primary),
+       pub_attribute_values!left(
+         boolean_value,
+         attributes!inner(code)
+       )`
     )
     .eq("pub_localities.locality_id", locality.id)
     .eq("pub_localities.is_primary", true)
@@ -242,7 +262,19 @@ async function fetchPubsForLocality(
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => withLocalityMetadata(mapPubRow(row), locality));
+  return (data ?? []).map((row) => {
+    const pub = withLocalityMetadata(mapPubRow(row), locality);
+    // Extract attribute codes for display (only boolean attributes that are true)
+    const attributeCodes: string[] = [];
+    if (row.pub_attribute_values && Array.isArray(row.pub_attribute_values)) {
+      row.pub_attribute_values.forEach((av: any) => {
+        if (av.attributes?.code && av.boolean_value === true) {
+          attributeCodes.push(av.attributes.code);
+        }
+      });
+    }
+    return { ...pub, attributeCodes };
+  });
 }
 
 export const getLocalities = cache(async (): Promise<Locality[]> => {
@@ -393,6 +425,7 @@ export async function getLocalityPageData(
       happy_hours_note: pub.happy_hours_note ?? null,
       locality_slug: locality.slug,
       locality_name: locality.name,
+      attributeCodes: [],
     }));
 
   const sorted = pubs.sort((a, b) => {
@@ -428,7 +461,8 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
            status, average_rating, review_count, cost_for_two_min, cost_for_two_max,
            cover_charge_min, cover_charge_max, cover_charge_redeemable, wifi_available,
            valet_available, stag_entry_policy, couples_entry_policy, happy_hours_note,
-           operating_hours_raw,
+           operating_hours_raw, overall_rating_average, overall_rating_min, overall_rating_max,
+           overall_rating_details, ratings_last_synced_at,
            pub_localities(locality_id, localities(name, slug, city, state)),
            pub_attribute_values(
              boolean_value,
@@ -440,6 +474,15 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
              schedule_value,
              rating_value,
              attributes(code, label, data_type)
+           ),
+           pub_platform_ratings(
+             platform,
+             rating,
+             review_count,
+             details,
+             citation_source,
+             citation_url,
+             is_growing
            )`
         )
         .eq("slug", slug)
@@ -501,6 +544,16 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
         })
         .filter((item): item is PubAttribute => Boolean(item));
 
+      const platformRatings: PlatformRating[] = (data.pub_platform_ratings ?? []).map((pr) => ({
+        platform: pr.platform,
+        rating: pr.rating,
+        review_count: pr.review_count,
+        details: pr.details,
+        citation_source: pr.citation_source,
+        citation_url: pr.citation_url,
+        is_growing: pr.is_growing,
+      }));
+
       return {
         id: data.id,
         name: data.name,
@@ -526,6 +579,11 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
         locality_name: localityName,
         operating_hours_raw: (data.operating_hours_raw as Record<string, string> | null) ?? null,
         attributes,
+        platform_ratings: platformRatings,
+        overall_rating_average: data.overall_rating_average,
+        overall_rating_min: data.overall_rating_min,
+        overall_rating_max: data.overall_rating_max,
+        overall_rating_details: data.overall_rating_details,
       };
     } catch (error) {
       console.warn("Supabase pub detail fallback", error);
@@ -568,6 +626,11 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
     locality_name: localityName,
     operating_hours_raw: match.operating_hours_raw,
     attributes: [],
+    platform_ratings: [],
+    overall_rating_average: null,
+    overall_rating_min: null,
+    overall_rating_max: null,
+    overall_rating_details: null,
   };
 }
 

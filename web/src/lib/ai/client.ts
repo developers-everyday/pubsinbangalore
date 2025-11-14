@@ -14,8 +14,8 @@ export interface AiClient extends AiClientConfig {
   anthropic?: Anthropic;
 }
 
-const DEFAULT_OPENAI_MODEL = process.env.AI_MODEL ?? "gpt-4o-mini";
-const DEFAULT_ANTHROPIC_MODEL = process.env.AI_MODEL ?? "claude-3-haiku-20240307";
+const DEFAULT_OPENAI_MODEL = process.env.OPENAI_MODEL ?? process.env.AI_MODEL ?? "gpt-4o-mini";
+const DEFAULT_ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL ?? process.env.AI_MODEL ?? "claude-3-haiku-20240307";
 
 export function createAiClient(): AiClient {
   const openAiKey = process.env.OPENAI_API_KEY;

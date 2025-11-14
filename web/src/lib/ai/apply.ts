@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, Json } from "@/lib/supabase/types";
 
-import type { AttributeResult, DescriptionResult, EnrichmentResult } from "./types";
+import type { AttributeEvidence, AttributeResult, DescriptionResult, EnrichmentResult } from "./types";
 
 type AttributeValueSnapshot = Pick<
   Database["public"]["Tables"]["pub_attribute_values"]["Row"],
@@ -206,10 +206,12 @@ export async function applyAttributes(
   client: SupabaseClient<Database>,
   pubId: string,
   attributes: AttributeResult,
+  evidence: Record<string, AttributeEvidence> | undefined,
   actor = "ai_enrichment"
 ) {
   const entries = Object.entries(attributes.attributes);
-  if (entries.length === 0) return;
+  const hasEvidence = Boolean(evidence && Object.keys(evidence).length > 0);
+  if (entries.length === 0 && !hasEvidence) return;
 
   const { data: attributeIndex, error: lookupError } = await client
     .from("attributes")
@@ -250,10 +252,33 @@ export async function applyAttributes(
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
-  if (changes.length === 0) return;
-
   const payload = changes.map((change) => change.payload);
   const attributeIds = changes.map((change) => change.attribute_id);
+
+  const evidenceRows =
+    evidence && metadataByCode.size > 0
+      ? Object.entries(evidence)
+          .flatMap(([code, detail]) => {
+            const metadata = metadataByCode.get(code);
+            if (!metadata) return [];
+            if (!detail?.citations || detail.citations.length === 0) return [];
+            const retrievedAtFallback = new Date().toISOString();
+            return detail.citations.map((citation) => ({
+              pub_id: pubId,
+              attribute_id: metadata.id,
+              source_url: citation.url,
+              source_title: citation.title ?? null,
+              source_publisher: citation.publisher ?? null,
+              source_snippet: citation.snippet ?? null,
+              provider: citation.provider ?? "perplexity",
+              confidence: citation.confidence ?? null,
+              retrieved_at: citation.retrievedAt ?? retrievedAtFallback,
+              verified_at: null,
+            }));
+          })
+      : [];
+
+  const evidenceAttributeIds = Array.from(new Set(evidenceRows.map((row) => row.attribute_id)));
 
   let beforeSnapshot: Record<string, unknown> | null = null;
   if (attributeIds.length > 0) {
@@ -278,25 +303,49 @@ export async function applyAttributes(
     }
   }
 
-  const { error } = await client.from("pub_attribute_values").upsert(payload, {
-    onConflict: "pub_id,attribute_id",
-  });
+  if (payload.length > 0) {
+    const { error } = await client.from("pub_attribute_values").upsert(payload, {
+      onConflict: "pub_id,attribute_id",
+    });
 
-  if (error) {
-    throw new Error(`Failed to upsert attribute values: ${error.message}`);
+    if (error) {
+      throw new Error(`Failed to upsert attribute values: ${error.message}`);
+    }
   }
 
-  const afterSnapshot = Object.fromEntries(changes.map((change) => [change.code, change.value]));
+  if (changes.length > 0) {
+    const afterSnapshot = Object.fromEntries(changes.map((change) => [change.code, change.value]));
 
-  await client.from("pub_change_history").insert({
-    pub_id: pubId,
-    action: actor,
-    before:
-      beforeSnapshot && Object.keys(beforeSnapshot).length > 0
-        ? toJson({ attributes: beforeSnapshot })
-        : null,
-    after: toJson({ attributes: afterSnapshot }),
-  });
+    await client.from("pub_change_history").insert({
+      pub_id: pubId,
+      action: actor,
+      before:
+        beforeSnapshot && Object.keys(beforeSnapshot).length > 0
+          ? toJson({ attributes: beforeSnapshot })
+          : null,
+      after: toJson({ attributes: afterSnapshot }),
+    });
+  }
+
+  if (evidenceRows.length > 0) {
+    const deleteQuery = client
+      .from("pub_attribute_evidence")
+      .delete()
+      .eq("pub_id", pubId)
+      .in("attribute_id", evidenceAttributeIds);
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) {
+      throw new Error(`Failed to clear existing attribute evidence: ${deleteError.message}`);
+    }
+
+    const { error: upsertEvidenceError } = await client.from("pub_attribute_evidence").upsert(evidenceRows, {
+      onConflict: "pub_id,attribute_id,source_url",
+    });
+
+    if (upsertEvidenceError) {
+      throw new Error(`Failed to upsert attribute evidence: ${upsertEvidenceError.message}`);
+    }
+  }
 }
 
 export async function applyEnrichment(
@@ -309,7 +358,13 @@ export async function applyEnrichment(
     const highlights = Array.isArray(result.highlights) ? result.highlights : [];
     await applyDescription(client, pubId, { summary: result.summary, highlights }, actor);
   }
-  if (result.attributes) {
-    await applyAttributes(client, pubId, { attributes: result.attributes }, actor);
+  if (result.attributes || result.attributeEvidence) {
+    await applyAttributes(
+      client,
+      pubId,
+      { attributes: result.attributes ?? {} },
+      result.attributeEvidence ?? {},
+      actor,
+    );
   }
 }

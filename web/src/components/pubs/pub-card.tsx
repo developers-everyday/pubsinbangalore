@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { PubSummary } from "@/lib/supabase/queries";
+import { formatGoogleRating } from "@/lib/utils/ratings";
 
 interface PubCardProps {
   pub: PubSummary;
@@ -19,12 +20,43 @@ const formatCost = (min: number | null, max: number | null) => {
   return "Not specified";
 };
 
+const formatAttributeLabel = (code: string): string => {
+  const labelMap: Record<string, string> = {
+    rooftop_seating: "Rooftop",
+    live_music: "Live Music",
+    craft_beer: "Craft Beer",
+    sports_screening: "Sports",
+    wifi_available: "WiFi",
+    valet_available: "Valet",
+    pet_friendly: "Pet Friendly",
+    outdoor_seating: "Outdoor",
+    karaoke: "Karaoke",
+    pool_table: "Pool Table",
+    dart_board: "Darts",
+    happy_hours: "Happy Hours",
+    dance_floor: "Dance Floor",
+  };
+  return labelMap[code] || code.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+};
+
 export function PubCard({ pub }: PubCardProps) {
   const amenityBadges: string[] = [];
+  
+  // Add basic boolean fields
   if (pub.cover_charge_redeemable) amenityBadges.push("Redeemable cover");
   if (pub.wifi_available) amenityBadges.push("WiFi");
   if (pub.valet_available) amenityBadges.push("Valet");
   if (pub.happy_hours_note) amenityBadges.push("Happy hours");
+  
+  // Add attributes from pub_attribute_values
+  if (pub.attributeCodes && pub.attributeCodes.length > 0) {
+    pub.attributeCodes.forEach((code) => {
+      const label = formatAttributeLabel(code);
+      if (!amenityBadges.includes(label)) {
+        amenityBadges.push(label);
+      }
+    });
+  }
 
   return (
     <article className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
@@ -52,7 +84,18 @@ export function PubCard({ pub }: PubCardProps) {
         </div>
         <div>
           <dt className="font-semibold text-slate-500">Rating</dt>
-          <dd>{ratingLabel(pub.average_rating, pub.review_count)}</dd>
+          <dd>
+            {pub.average_rating && (
+              <Link
+                href={pub.google_maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-700 hover:text-emerald-800 hover:underline"
+              >
+                {formatGoogleRating(pub.average_rating, pub.review_count)}
+              </Link>
+            )}
+          </dd>
         </div>
         <div>
           <dt className="font-semibold text-slate-500">Entry policy</dt>

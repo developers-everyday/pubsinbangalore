@@ -4,19 +4,45 @@ import type { PubDetail } from "@/lib/supabase/queries";
 
 import { createAiClient } from "./client";
 import { buildAttributePrompt, buildDescriptionPrompt } from "./prompts";
-import type { AiResponse, AttributeResult, DescriptionResult, EnrichmentResult } from "./types";
+import type {
+  AiResponse,
+  AttributeEvidence,
+  AttributeResult,
+  DescriptionResult,
+  EnrichmentResult,
+} from "./types";
 
 const DescriptionSchema = z.object({
   summary: z.string().min(20).max(320),
   highlights: z.array(z.string().min(3).max(80)).length(3),
 });
 
+const AttributeEvidenceSchema = z.object({
+  value: z.unknown().optional(),
+  reasoning: z.string().optional(),
+  citations: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        title: z.string().optional(),
+        publisher: z.string().optional(),
+        snippet: z.string().optional(),
+        confidence: z.number().min(0).max(1).optional(),
+        retrievedAt: z.string().optional(),
+        provider: z.string().optional(),
+      }),
+    )
+    .default([]),
+});
+
 const AttributeSchema = z.object({
-  attributes: z.record(z.string(), z.unknown()),
+  attributes: z.record(z.string(), z.unknown()).default({}),
+  attributeEvidence: z.record(z.string(), AttributeEvidenceSchema).default({}),
 });
 
 export type GenerationConfig = {
   dryRunFallback?: Partial<DescriptionResult & AttributeResult>;
+  evidence?: Record<string, AttributeEvidence>;
 };
 
 async function callOpenAI(prompt: string, model: string, jsonMode = true) {
@@ -146,10 +172,10 @@ export async function generateAttributes(pub: PubDetail, config?: GenerationConf
       music_genres: ["rock", "retro"],
       cover_redeemable: pub.cover_charge_redeemable ?? false,
     };
-    return stubResponse({ attributes });
+    return stubResponse({ attributes, attributeEvidence: config?.evidence ?? {} });
   }
 
-  const prompt = buildAttributePrompt(pub);
+  const prompt = buildAttributePrompt(pub, { evidence: config?.evidence });
   const raw =
     client.provider === "openai"
       ? await callOpenAI(prompt, client.model)
