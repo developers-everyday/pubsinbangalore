@@ -580,10 +580,10 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
         operating_hours_raw: (data.operating_hours_raw as Record<string, string> | null) ?? null,
         attributes,
         platform_ratings: platformRatings,
-        overall_rating_average: data.overall_rating_average,
-        overall_rating_min: data.overall_rating_min,
-        overall_rating_max: data.overall_rating_max,
-        overall_rating_details: data.overall_rating_details,
+        overall_rating_average: data.overall_rating_average ?? null,
+        overall_rating_min: data.overall_rating_min ?? null,
+        overall_rating_max: data.overall_rating_max ?? null,
+        overall_rating_details: data.overall_rating_details ?? null,
       };
     } catch (error) {
       console.warn("Supabase pub detail fallback", error);
