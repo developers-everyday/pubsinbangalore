@@ -141,6 +141,19 @@ Comprehensive quality assurance checklist for PubsInBangalore directory before l
 - [ ] `navigator.share` fallback copies message when native share unavailable
 - [ ] Message includes correct pub name, locality, and URL
 
+### Entry & Pricing Voting
+- [ ] Stag entry chips show separate sets for weekends and weekdays
+- [ ] Vote counts increment when tapping Allowed / Not allowed
+- [ ] Cover charge and redeemable chips highlight the majority option
+- [ ] Copy updates without page reload (client-side state only)
+- [ ] Votes persist for the session (refresh keeps the last choice)
+- [ ] “X people confirmed today” caption reflects total votes
+- [ ] Safety note (“Call the pub…”) appears under the section
+
+### Operating Hours Schedule
+- [ ] Rows display as `Mon`/`Tue` abbreviations with times on a single line
+- [ ] Placeholder hours show italic text when data is missing
+
 ### Badge System
 - [ ] Badge generation form works
 - [ ] Email verification link works

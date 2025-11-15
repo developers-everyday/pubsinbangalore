@@ -285,6 +285,36 @@ end $$;
 create index if not exists idx_pub_platform_ratings_pub on public.pub_platform_ratings (pub_id);
 create index if not exists idx_pub_platform_ratings_platform on public.pub_platform_ratings (platform);
 
+-- 6c. Plan-your-visit content cached per pub
+create table if not exists public.pub_plan_visit_content (
+    pub_id uuid primary key references public.pubs(id) on delete cascade,
+    status text not null default 'draft' check (status in ('draft', 'published', 'archived')),
+    data_source text not null default 'manual' check (data_source in ('manual', 'ai_generated', 'editorial', 'hybrid')),
+    visit_summary text,
+    highlights jsonb,
+    itinerary jsonb,
+    faqs jsonb,
+    tips jsonb,
+    provenance jsonb,
+    last_enriched_at timestamptz,
+    reviewed_by uuid references public.profiles(id),
+    reviewed_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_trigger where tgname = 'trg_pub_plan_visit_content_updated_at'
+    ) then
+        create trigger trg_pub_plan_visit_content_updated_at
+        before update on public.pub_plan_visit_content
+        for each row
+        execute procedure public.set_updated_at();
+    end if;
+end $$;
+
 -- 7. Ownership claims
 create table if not exists public.pub_claims (
     id uuid primary key default uuid_generate_v4(),
@@ -340,6 +370,7 @@ alter table public.pub_localities enable row level security;
 alter table public.attributes enable row level security;
 alter table public.pub_attribute_values enable row level security;
 alter table public.pub_platform_ratings enable row level security;
+alter table public.pub_plan_visit_content enable row level security;
 alter table public.ai_content_jobs enable row level security;
 alter table public.pub_claims enable row level security;
 alter table public.pub_change_history enable row level security;
@@ -455,6 +486,27 @@ begin
         select 1 from pg_policies where policyname = 'pub_platform_ratings_service_role_write'
     ) then
         create policy pub_platform_ratings_service_role_write on public.pub_platform_ratings
+        for all using (auth.role() = 'service_role')
+        with check (auth.role() = 'service_role');
+    end if;
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_policies where policyname = 'pub_plan_visit_content_public_read'
+    ) then
+        create policy pub_plan_visit_content_public_read on public.pub_plan_visit_content
+        for select using (true);
+    end if;
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_policies where policyname = 'pub_plan_visit_content_service_role_write'
+    ) then
+        create policy pub_plan_visit_content_service_role_write on public.pub_plan_visit_content
         for all using (auth.role() = 'service_role')
         with check (auth.role() = 'service_role');
     end if;

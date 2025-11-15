@@ -240,6 +240,67 @@ export type Database = {
           }
         ];
       };
+      // NOTE: Populated by the external crawl4ai project; consumed by Plan Your Visit UI.
+      pub_plan_visit_content: {
+        Row: {
+          pub_id: string;
+          status: "draft" | "published" | "archived";
+          data_source: "manual" | "ai_generated" | "editorial" | "hybrid";
+          visit_summary: string | null;
+          highlights: Json | null;
+          itinerary: Json | null;
+          faqs: Json | null;
+          tips: Json | null;
+          provenance: Json | null;
+          last_enriched_at: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          pub_id: string;
+          status?: "draft" | "published" | "archived";
+          data_source?: "manual" | "ai_generated" | "editorial" | "hybrid";
+          visit_summary?: string | null;
+          highlights?: Json | null;
+          itinerary?: Json | null;
+          faqs?: Json | null;
+          tips?: Json | null;
+          provenance?: Json | null;
+          last_enriched_at?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Update: {
+          pub_id?: string;
+          status?: "draft" | "published" | "archived";
+          data_source?: "manual" | "ai_generated" | "editorial" | "hybrid";
+          visit_summary?: string | null;
+          highlights?: Json | null;
+          itinerary?: Json | null;
+          faqs?: Json | null;
+          tips?: Json | null;
+          provenance?: Json | null;
+          last_enriched_at?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pub_plan_visit_content_pub_id_fkey";
+            columns: ["pub_id"];
+            referencedRelation: "pubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pub_plan_visit_content_reviewed_by_fkey";
+            columns: ["reviewed_by"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       ai_content_jobs: {
         Row: {
           id: string;
