@@ -60,7 +60,7 @@ export default async function Home() {
             <p className="text-lg text-slate-600">
               We are building a locality-first discovery experience powered by Supabase,
               AI enrichment, and SEO-friendly programmatic pages. Follow the build as we
-              wire up ingestion pipelines, locality collections, and badge-ready pub listings.
+              wire up ingestion pipelines, locality collections, and share-friendly pub listings.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -159,7 +159,7 @@ export default async function Home() {
           <p className="mt-4 text-base text-slate-600">
             By coupling a structured Supabase schema with AI-assisted enrichment, we can serve
             scenario-based queries like “rooftop pub with rock music under ₹1500” directly on
-            locality pages. Structured JSON-LD and badge-driven backlinks amplify discoverability
+            locality pages. Structured JSON-LD plus one-tap share links amplify discoverability
             ahead of launch.
           </p>
         </section>

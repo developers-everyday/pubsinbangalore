@@ -104,4 +104,4 @@ Row-level security is enabled for the main tables. Public reads are allowed, whi
 - Build locality and pub detail routes with ISR + JSON-LD
 - Implement admin dashboard and claim workflow
 - Add AI enrichment jobs via Supabase queues / Edge Functions
-- Integrate badge generator and sitemap automation for launch readiness
+- Ship shareable link generator + sitemap automation for launch readiness

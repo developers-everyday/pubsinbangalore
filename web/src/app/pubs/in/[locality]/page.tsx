@@ -5,6 +5,7 @@ import { SearchForm } from "@/components/search/search-form";
 import { LocalityFilters, type LocalityFilterState } from "@/components/search/locality-filters";
 import { PubCard } from "@/components/pubs/pub-card";
 import { getLocalities, getLocalityPageData } from "@/lib/supabase/queries";
+import { getCanonicalUrl } from "@/lib/utils/canonical";
 
 export const revalidate = 300;
 
@@ -73,6 +74,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: {
+      canonical: getCanonicalUrl(`/pubs/in/${resolvedParams.locality}`),
+    },
     openGraph: {
       title,
       description,

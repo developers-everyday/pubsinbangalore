@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { getCanonicalUrl } from "@/lib/utils/canonical";
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,6 +18,9 @@ export const metadata: Metadata = {
   title: "PubsInBangalore • AI-enriched Pub Directory",
   description:
     "Building a Supabase-backed, SEO-first directory for pubs in Bangalore with AI enrichment and programmatic locality pages.",
+  alternates: {
+    canonical: getCanonicalUrl("/"),
+  },
   openGraph: {
     title: "PubsInBangalore Technical Preview",
     description:
@@ -25,8 +30,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "PubsInBangalore Technical Preview",
-    description:
-      "Supabase + Next.js powered directory with AI enrichment and badge-driven backlinks.",
+    description: "Supabase + Next.js powered directory with AI enrichment and shareable pub drops.",
   },
 };
 
@@ -38,6 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <GoogleAnalytics />
         {children}
       </body>
     </html>

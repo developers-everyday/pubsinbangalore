@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "import:pubs": "tsx scripts/import-pubs.ts",
-    "run:ai-jobs": "tsx scripts/run-ai-jobs.ts"
+    "run:ai-jobs": "tsx scripts/run-ai-jobs.ts",
+    "validate:schema": "tsx scripts/validate-schema.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

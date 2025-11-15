@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getLocalities } from "@/lib/supabase/queries";
+import { getCanonicalUrl } from "@/lib/utils/canonical";
 
 export const metadata: Metadata = {
   title: "Bangalore Pub Directory",
   description:
     "Discover Bangalore pubs by locality, vibe, and budget with AI-enriched insights and transparent pricing.",
+  alternates: {
+    canonical: getCanonicalUrl("/pubs"),
+  },
 };
 
 export default async function PubsLayout({

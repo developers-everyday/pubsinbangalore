@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { PubCard } from "@/components/pubs/pub-card";
 import { getLocalityPageData, getPubDetail } from "@/lib/supabase/queries";
 import { PlatformRatings } from "@/components/pubs/platform-ratings";
+import { ShareLinkSection } from "@/components/pubs/share-link-section";
+import { getCanonicalUrl } from "@/lib/utils/canonical";
 
 export const revalidate = 300;
 
@@ -45,6 +47,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: {
+      canonical: getCanonicalUrl(`/pubs/${resolvedParams.slug}`),
+    },
     openGraph: {
       title,
       description,
@@ -290,12 +295,20 @@ export default async function PubDetailPage({
         </section>
       )}
 
+      <ShareLinkSection
+        pubName={pub.name}
+        localityName={pub.locality_name}
+        slug={pub.slug}
+        description={pub.description}
+        rating={pub.average_rating}
+      />
+
       <section className="grid gap-6 md:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Plan your visit</h2>
           <ul className="mt-4 list-inside list-disc space-y-2 text-sm text-slate-600">
             <li>AI-generated highlights and FAQs will surface here in Phase 4.</li>
-            <li>Claimed owners can manage cover charges, events, and badge embeds.</li>
+            <li>Claimed owners can manage cover charges, events, and share-ready promos.</li>
             <li>Schema.org JSON-LD already prepared for search engines.</li>
           </ul>
         </div>
