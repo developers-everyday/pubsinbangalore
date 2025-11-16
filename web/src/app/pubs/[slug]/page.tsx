@@ -6,10 +6,12 @@ import { PubCard } from "@/components/pubs/pub-card";
 import { getLocalityPageData, getPubDetail } from "@/lib/supabase/queries";
 import { PlatformRatings } from "@/components/pubs/platform-ratings";
 import { ShareLinkSection } from "@/components/pubs/share-link-section";
-import { VoteChips } from "@/components/pubs/vote-chips";
-import type { VoteOption } from "@/components/pubs/vote-chips";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
 import { OperatingHoursCard } from "@/components/pubs/operating-hours-card";
+import { VotingPanel } from "@/components/pubs/voting-panel";
+import { canUseVoteBackend, getPubVoteStats } from "@/lib/supabase/votes";
+import { DEFAULT_VOTE_TOPICS } from "@/lib/votes/schema";
+import { getSeededVoteStats } from "@/lib/votes/fallback";
 
 export const revalidate = 300;
 
@@ -61,29 +63,6 @@ const transformOperatingHours = (hours: Record<string, string> | null): Schedule
   }
   
   return schedule;
-};
-
-const inferBiasFromString = (value: string | null | undefined): "positive" | "negative" | "neutral" => {
-  if (!value) return "neutral";
-  const normalised = value.toLowerCase();
-  if (normalised.includes("not") || normalised.includes("restricted")) return "negative";
-  if (normalised.includes("allow") || normalised.includes("permitted")) return "positive";
-  return "neutral";
-};
-
-const createBooleanVoteOptions = (
-  positiveId: string,
-  positiveLabel: string,
-  negativeId: string,
-  negativeLabel: string,
-  bias: "positive" | "negative" | "neutral"
-): VoteOption[] => {
-  const positiveBase = bias === "positive" ? 32 : bias === "negative" ? 14 : 22;
-  const negativeBase = bias === "positive" ? 12 : bias === "negative" ? 28 : 20;
-  return [
-    { id: positiveId, label: positiveLabel, count: positiveBase },
-    { id: negativeId, label: negativeLabel, count: negativeBase },
-  ];
 };
 
 const formatCost = (min: number | null, max: number | null) => {
@@ -139,39 +118,19 @@ export default async function PubDetailPage({
   }
 
   const operatingHours = transformOperatingHours(pub.operating_hours_raw as Record<string, string> | null);
-  const storageKey = (suffix: string) => `vote:${pub.id ?? pub.slug}:${suffix}`;
+  const voteBackendEnabled = await canUseVoteBackend();
+  let voteStats: Awaited<ReturnType<typeof getPubVoteStats>> = null;
+  if (voteBackendEnabled && pub.id) {
+    try {
+      voteStats = await getPubVoteStats(pub.id);
+    } catch (error) {
+      console.warn("Unable to load vote stats", error);
+      voteStats = getSeededVoteStats(DEFAULT_VOTE_TOPICS);
+    }
+  } else {
+    voteStats = getSeededVoteStats(DEFAULT_VOTE_TOPICS);
+  }
 
-  const stagBias = inferBiasFromString(pub.stag_entry_policy);
-  const stagEntryOptions = createBooleanVoteOptions(
-    "stag-entry-allowed",
-    "Allowed",
-    "stag-entry-not-allowed",
-    "Not allowed",
-    stagBias
-  );
-
-  const coverBias = pub.cover_charge_min || pub.cover_charge_max ? "positive" : "negative";
-  const coverOptions = createBooleanVoteOptions(
-    "cover-present",
-    "Cover charge",
-    "cover-free",
-    "No cover",
-    coverBias as "positive" | "negative" | "neutral"
-  );
-
-  const redeemBias =
-    pub.cover_charge_redeemable === true
-      ? "positive"
-      : pub.cover_charge_redeemable === false
-      ? "negative"
-      : "neutral";
-  const redeemOptions = createBooleanVoteOptions(
-    "cover-redeemable",
-    "Redeemable",
-    "cover-not-redeemable",
-    "Not redeemable",
-    redeemBias
-  );
   const mapQuery = encodeURIComponent(`${pub.name} ${pub.locality_name ?? "Bengaluru"}`);
   const mapEmbedUrl = `https://maps.google.com/maps?q=${mapQuery}&output=embed`;
 
@@ -348,70 +307,12 @@ export default async function PubDetailPage({
         </section>
       )}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Entry & pricing</h2>
-        <dl className="mt-4 space-y-3 text-sm text-slate-600">
-          <div className="flex items-center justify-between">
-            <dt className="font-medium">Cover charge</dt>
-            <dd>
-              {pub.cover_charge_min || pub.cover_charge_max
-                ? formatCost(pub.cover_charge_min, pub.cover_charge_max)
-                : "Call ahead — cover changes nightly"}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="font-medium">Redeemable?</dt>
-            <dd>
-              {pub.cover_charge_redeemable === true
-                ? "Yes (recent reports)"
-                : pub.cover_charge_redeemable === false
-                ? "Usually not redeemable"
-                : "Depends on the night"}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="font-medium">Stag entry</dt>
-            <dd>{pub.stag_entry_policy ?? "Tap to crowd-source below"}</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="font-medium">Couples entry</dt>
-            <dd>Allowed (default assumption)</dd>
-          </div>
-          {pub.happy_hours_note && (
-            <div className="flex items-center justify-between">
-              <dt className="font-medium">Happy hours</dt>
-              <dd>{pub.happy_hours_note}</dd>
-            </div>
-          )}
-        </dl>
-      </section>
-
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Community updates and Votes</h2>
-        <div className="mt-4 space-y-4">
-          <VoteChips
-            label="Stag entry"
-            storageKey={storageKey("stag-entry")}
-            initialOptions={stagEntryOptions}
-            helperText="Tap once per session"
-          />
-          <VoteChips
-            label="Cover charge vibe"
-            storageKey={storageKey("cover-charge")}
-            initialOptions={coverOptions}
-            helperText="Community check-ins"
-          />
-          <VoteChips
-            label="Cover is redeemable"
-            storageKey={storageKey("cover-redeemable")}
-            initialOptions={redeemOptions}
-            helperText="Vote based on your visit"
-          />
-        </div>
-        <p className="mt-4 text-xs text-slate-500">
-          House rules change often — call the pub before you head out to confirm cover and entry policies.
-        </p>
-      </section>
+      <VotingPanel
+        pubSlug={pub.slug}
+        topics={DEFAULT_VOTE_TOPICS}
+        initialStats={voteStats}
+        supabaseEnabled={voteBackendEnabled}
+      />
 
       {pub.overall_rating_details && (
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

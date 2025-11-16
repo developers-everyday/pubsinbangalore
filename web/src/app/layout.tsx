@@ -15,22 +15,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PubsInBangalore • AI-enriched Pub Directory",
+  title: "Best Pubs in Bangalore | PubsInBangalore - Events, Offers & Bookings",
   description:
-    "Building a Supabase-backed, SEO-first directory for pubs in Bangalore with AI enrichment and programmatic locality pages.",
+    "Discover the best pubs in Bangalore. Find venues by locality, check live updates, book for corporate events. Follow us for exclusive offers and nightlife updates.",
+  keywords: ["pubs in bangalore", "best bars bangalore", "bangalore nightlife", "pubs near me", "bangalore pubs", "nightlife bangalore", "pub booking bangalore"],
   alternates: {
     canonical: getCanonicalUrl("/"),
   },
   openGraph: {
-    title: "PubsInBangalore Technical Preview",
+    title: "Best Pubs in Bangalore | PubsInBangalore",
     description:
-      "Follow the build of a locality-first, AI-enriched pub directory powered by Supabase and Next.js.",
+      "Discover the best pubs in Bangalore. Find venues by locality, check live updates, and book for corporate events.",
     type: "website",
+    url: "https://pubsinbangalore.com",
   },
   twitter: {
     card: "summary_large_image",
-    title: "PubsInBangalore Technical Preview",
-    description: "Supabase + Next.js powered directory with AI enrichment and shareable pub drops.",
+    title: "Best Pubs in Bangalore | PubsInBangalore",
+    description: "Discover the best pubs in Bangalore. Find venues by locality, check live updates, and book for corporate events.",
   },
 };
 

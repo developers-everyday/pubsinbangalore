@@ -1,4 +1,5 @@
 -- Seed canonical Bangalore localities for launch
+-- For latitude, longitude we will use the most famoues pubs in the locality or where we have more pubs together
 insert into public.localities (name, slug, latitude, longitude)
 values
     ('Indiranagar', 'indiranagar', 12.971891, 77.641151),
@@ -12,5 +13,6 @@ values
     ('Brigade Road', 'brigade-road', 12.972200, 77.607000),
     ('Marathahalli', 'marathahalli', 12.959200, 77.697400),
     ('Bellandur', 'bellandur', 12.930400, 77.678400),
-    ('Hebbal', 'hebbal', 13.035200, 77.597000)
+    ('Hebbal', 'hebbal', 13.035200, 77.597000),
+    ('Sarjapur', 'sarjapur', 12.907212, 77.694583),
 on conflict (slug) do nothing;

@@ -151,6 +151,40 @@ export type Database = {
           }
         ];
       };
+      pub_vote_events: {
+        Row: {
+          id: string;
+          pub_id: string;
+          topic: string;
+          option_id: string;
+          voter_token: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          pub_id: string;
+          topic: string;
+          option_id: string;
+          voter_token: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          pub_id?: string;
+          topic?: string;
+          option_id?: string;
+          voter_token?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pub_vote_events_pub_id_fkey";
+            columns: ["pub_id"];
+            referencedRelation: "pubs";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       attributes: {
         Row: {
           id: string;
