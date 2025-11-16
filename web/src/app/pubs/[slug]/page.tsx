@@ -9,38 +9,59 @@ import { ShareLinkSection } from "@/components/pubs/share-link-section";
 import { VoteChips } from "@/components/pubs/vote-chips";
 import type { VoteOption } from "@/components/pubs/vote-chips";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
+import { OperatingHoursCard } from "@/components/pubs/operating-hours-card";
 
 export const revalidate = 300;
 
-type OperatingHour = {
-  day: string;
-  shortDay: string;
-  slot: string;
-  isConfirmed: boolean;
+type TimeRange = {
+  open: string;
+  close: string;
+  servingUntil?: string;
 };
 
-const DAYS_OF_WEEK: Array<{ key: string; label: string; short: string }> = [
-  { key: "monday", label: "Monday", short: "Mon" },
-  { key: "tuesday", label: "Tuesday", short: "Tue" },
-  { key: "wednesday", label: "Wednesday", short: "Wed" },
-  { key: "thursday", label: "Thursday", short: "Thu" },
-  { key: "friday", label: "Friday", short: "Fri" },
-  { key: "saturday", label: "Saturday", short: "Sat" },
-  { key: "sunday", label: "Sunday", short: "Sun" },
-];
+type ScheduleData = Record<number, TimeRange[]>;
+
+const DAYS_OF_WEEK_MAP: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
 
 const DEFAULT_HOURS = "12:00 PM – 1:00 AM";
 
-const formatOperatingHours = (hours: Record<string, string> | null): OperatingHour[] =>
-  DAYS_OF_WEEK.map(({ key, label, short }) => {
-    const slot = hours?.[key];
-    return {
-      day: label,
-      shortDay: short,
-      slot: slot ?? DEFAULT_HOURS,
-      isConfirmed: Boolean(slot),
-    };
-  });
+/**
+ * Transforms operating hours from database format to component format
+ * From: { monday: "12:00 PM – 1:00 AM", ... }
+ * To: { 0: [{ open: "12:00 PM", close: "1:00 AM" }], ... } where 0=Sunday, 1=Monday, etc.
+ */
+const transformOperatingHours = (hours: Record<string, string> | null): ScheduleData => {
+  const schedule: ScheduleData = {};
+  
+  // Initialize all days with default hours
+  for (let i = 0; i < 7; i++) {
+    const [open, close] = DEFAULT_HOURS.split(" – ");
+    schedule[i] = [{ open, close, servingUntil: "12:00 AM" }];
+  }
+  
+  // Override with actual hours if available
+  if (hours) {
+    Object.entries(hours).forEach(([dayName, timeSlot]) => {
+      const dayIndex = DAYS_OF_WEEK_MAP[dayName.toLowerCase()];
+      if (dayIndex !== undefined && timeSlot) {
+        const [open, close] = timeSlot.split(" – ").map(s => s.trim());
+        if (open && close) {
+          schedule[dayIndex] = [{ open, close }];
+        }
+      }
+    });
+  }
+  
+  return schedule;
+};
 
 const inferBiasFromString = (value: string | null | undefined): "positive" | "negative" | "neutral" => {
   if (!value) return "neutral";
@@ -117,21 +138,14 @@ export default async function PubDetailPage({
     notFound();
   }
 
-  const weeklyHours = formatOperatingHours(pub.operating_hours_raw as Record<string, string> | null);
+  const operatingHours = transformOperatingHours(pub.operating_hours_raw as Record<string, string> | null);
   const storageKey = (suffix: string) => `vote:${pub.id ?? pub.slug}:${suffix}`;
 
   const stagBias = inferBiasFromString(pub.stag_entry_policy);
-  const stagWeekendOptions = createBooleanVoteOptions(
-    "stag-weekend-allowed",
+  const stagEntryOptions = createBooleanVoteOptions(
+    "stag-entry-allowed",
     "Allowed",
-    "stag-weekend-not-allowed",
-    "Not allowed",
-    stagBias
-  );
-  const stagWeekdayOptions = createBooleanVoteOptions(
-    "stag-weekday-allowed",
-    "Allowed",
-    "stag-weekday-not-allowed",
+    "stag-entry-not-allowed",
     "Not allowed",
     stagBias
   );
@@ -306,6 +320,10 @@ export default async function PubDetailPage({
         </div>
       </div>
 
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <OperatingHoursCard hours={operatingHours} />
+      </section>
+
       {(pub.average_rating || pub.platform_ratings.length > 0) && (
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <PlatformRatings
@@ -330,91 +348,69 @@ export default async function PubDetailPage({
         </section>
       )}
 
-      <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Operating hours</h2>
-          <dl className="mt-4 space-y-1 text-sm text-slate-600">
-            {weeklyHours.map((entry) => (
-              <div key={entry.day} className="flex items-center justify-between rounded-lg px-3 py-2">
-                <dt className="font-medium text-slate-800">{entry.shortDay}</dt>
-                <dd className={entry.isConfirmed ? "text-slate-800" : "italic text-slate-400"}>
-                  {entry.slot}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Entry & pricing</h2>
-          <div className="mt-4 space-y-6">
-            <dl className="space-y-3 text-sm text-slate-600">
-              <div className="flex items-center justify-between">
-                <dt className="font-medium">Cover charge</dt>
-                <dd>
-                  {pub.cover_charge_min || pub.cover_charge_max
-                    ? formatCost(pub.cover_charge_min, pub.cover_charge_max)
-                    : "Call ahead — cover changes nightly"}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="font-medium">Redeemable?</dt>
-                <dd>
-                  {pub.cover_charge_redeemable === true
-                    ? "Yes (recent reports)"
-                    : pub.cover_charge_redeemable === false
-                    ? "Usually not redeemable"
-                    : "Depends on the night"}
-                </dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="font-medium">Stag entry</dt>
-                <dd>{pub.stag_entry_policy ?? "Tap to crowd-source below"}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="font-medium">Couples entry</dt>
-                <dd>Allowed (default assumption)</dd>
-              </div>
-              {pub.happy_hours_note && (
-                <div className="flex items-center justify-between">
-                  <dt className="font-medium">Happy hours</dt>
-                  <dd>{pub.happy_hours_note}</dd>
-                </div>
-              )}
-            </dl>
-
-            <div className="space-y-4">
-              <VoteChips
-                label="Stag entry · Weekends (Fri–Sun)"
-                storageKey={storageKey("stag-weekend")}
-                initialOptions={stagWeekendOptions}
-                helperText="Tap once per session"
-              />
-              <VoteChips
-                label="Stag entry · Weekdays (Mon–Thu)"
-                storageKey={storageKey("stag-weekday")}
-                initialOptions={stagWeekdayOptions}
-                helperText="Tap once per session"
-              />
-              <VoteChips
-                label="Cover charge vibe"
-                storageKey={storageKey("cover-charge")}
-                initialOptions={coverOptions}
-                helperText="Community check-ins"
-              />
-              <VoteChips
-                label="Cover is redeemable"
-                storageKey={storageKey("cover-redeemable")}
-                initialOptions={redeemOptions}
-                helperText="Vote based on your visit"
-              />
-            </div>
-
-            <p className="text-xs text-slate-500">
-              House rules change often — call the pub before you head out to confirm cover and entry policies.
-            </p>
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Entry & pricing</h2>
+        <dl className="mt-4 space-y-3 text-sm text-slate-600">
+          <div className="flex items-center justify-between">
+            <dt className="font-medium">Cover charge</dt>
+            <dd>
+              {pub.cover_charge_min || pub.cover_charge_max
+                ? formatCost(pub.cover_charge_min, pub.cover_charge_max)
+                : "Call ahead — cover changes nightly"}
+            </dd>
           </div>
+          <div className="flex items-center justify-between">
+            <dt className="font-medium">Redeemable?</dt>
+            <dd>
+              {pub.cover_charge_redeemable === true
+                ? "Yes (recent reports)"
+                : pub.cover_charge_redeemable === false
+                ? "Usually not redeemable"
+                : "Depends on the night"}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between">
+            <dt className="font-medium">Stag entry</dt>
+            <dd>{pub.stag_entry_policy ?? "Tap to crowd-source below"}</dd>
+          </div>
+          <div className="flex items-center justify-between">
+            <dt className="font-medium">Couples entry</dt>
+            <dd>Allowed (default assumption)</dd>
+          </div>
+          {pub.happy_hours_note && (
+            <div className="flex items-center justify-between">
+              <dt className="font-medium">Happy hours</dt>
+              <dd>{pub.happy_hours_note}</dd>
+            </div>
+          )}
+        </dl>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Community updates and Votes</h2>
+        <div className="mt-4 space-y-4">
+          <VoteChips
+            label="Stag entry"
+            storageKey={storageKey("stag-entry")}
+            initialOptions={stagEntryOptions}
+            helperText="Tap once per session"
+          />
+          <VoteChips
+            label="Cover charge vibe"
+            storageKey={storageKey("cover-charge")}
+            initialOptions={coverOptions}
+            helperText="Community check-ins"
+          />
+          <VoteChips
+            label="Cover is redeemable"
+            storageKey={storageKey("cover-redeemable")}
+            initialOptions={redeemOptions}
+            helperText="Vote based on your visit"
+          />
         </div>
+        <p className="mt-4 text-xs text-slate-500">
+          House rules change often — call the pub before you head out to confirm cover and entry policies.
+        </p>
       </section>
 
       {pub.overall_rating_details && (
