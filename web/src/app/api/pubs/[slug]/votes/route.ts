@@ -7,7 +7,7 @@ import type { Database } from "@/lib/supabase/types";
 import { canUseVoteBackend, getPubVoteStats, recordPubVote } from "@/lib/supabase/votes";
 
 type RouteContext = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 async function resolvePubId(slug: string, client: SupabaseClient<Database>) {
@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   try {
-    const { slug } = context.params;
+    const { slug } = await context.params;
     const supabase = getServerSupabaseClient();
     const pubId = await resolvePubId(slug, supabase);
 
@@ -61,7 +61,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    const { slug } = context.params;
+    const { slug } = await context.params;
     const serviceClient = getServiceSupabaseClient();
     const pubId = await resolvePubId(slug, serviceClient);
 
