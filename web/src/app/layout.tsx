@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { AgeVerificationModal } from "@/components/age-gate/age-verification-modal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <GoogleAnalytics />
+        <AgeVerificationModal />
         {children}
       </body>
     </html>
