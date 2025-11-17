@@ -178,10 +178,16 @@ export function AgeVerificationModal() {
           )}
 
           {/* Legal Disclaimer */}
-          <p className="mt-6 text-center text-xs text-slate-500">
-            By clicking &quot;Yes&quot;, you confirm that you meet the legal drinking age
-            requirement in your jurisdiction.
-          </p>
+          <div className="mt-6 space-y-2 text-center text-xs text-slate-500">
+            <p>
+              By clicking &quot;Yes&quot;, you confirm that you meet the legal drinking age
+              requirement in your jurisdiction.
+            </p>
+            <p>
+              Information on this site is aggregated from multiple sources. Users are responsible
+              for their own decisions. Please verify details with venues and drink responsibly.
+            </p>
+          </div>
         </div>
       </div>
     </>
