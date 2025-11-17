@@ -77,7 +77,7 @@ async function validatePage(pagePath: string): Promise<ValidationResult> {
     const content = await readFile(pagePath, "utf-8");
 
     // Extract JSON-LD scripts
-    const jsonLdMatches = content.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gs);
+    const jsonLdMatches = content.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/g);
 
     if (!jsonLdMatches || jsonLdMatches.length === 0) {
       return {
@@ -91,7 +91,7 @@ async function validatePage(pagePath: string): Promise<ValidationResult> {
 
     for (const match of jsonLdMatches) {
       // Extract JSON content from script tag
-      const jsonMatch = match.match(/<script[^>]*>(.*?)<\/script>/s);
+      const jsonMatch = match.match(/<script[^>]*>([\s\S]*?)<\/script>/);
       if (!jsonMatch) continue;
 
       try {
