@@ -6,6 +6,7 @@ import { LocalityFilters, type LocalityFilterState } from "@/components/search/l
 import { PubCard } from "@/components/pubs/pub-card";
 import { getLocalities, getLocalityPageData } from "@/lib/supabase/queries";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
+import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 
 export const revalidate = 300;
 
@@ -81,6 +82,25 @@ export async function generateMetadata({
       title,
       description,
       type: "website",
+      url: `https://pubsinbangalore.com/pubs/in/${resolvedParams.locality}`,
+      locale: "en_IN",
+      siteName: "PubsInBangalore",
+      images: [
+        {
+          url: "https://pubsinbangalore.com/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: `${localityInfo.name} pubs in Bangalore`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["https://pubsinbangalore.com/og-image.png"],
+      creator: "@pubsinbangalore",
+      site: "@pubsinbangalore",
     },
   };
 }
@@ -146,6 +166,12 @@ export default async function LocalityPage({
   if (filterState.valet) appliedFilters.push("Valet service");
   if (filterState.coverRedeemable) appliedFilters.push("Redeemable cover");
 
+  const breadcrumbItems = [
+    { name: "Home", url: "/" },
+    { name: "Pubs", url: "/pubs" },
+    { name: locality.name, url: `/pubs/in/${resolvedParams.locality}` },
+  ];
+
   return (
     <div className="space-y-10">
       <script
@@ -153,6 +179,8 @@ export default async function LocalityPage({
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
+
+      <Breadcrumbs items={breadcrumbItems} />
       <header className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="space-y-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">

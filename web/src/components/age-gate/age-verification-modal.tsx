@@ -12,11 +12,11 @@ export function AgeVerificationModal() {
     // Only run in browser
     if (typeof window === "undefined") return;
 
-    // Check sessionStorage for age verification
-    const verified = sessionStorage.getItem("age_verified");
+    // Check localStorage for age verification (persists across sessions)
+    const verified = localStorage.getItem("age_verified");
     if (!verified) {
-      // Small delay to ensure page content loads first
-      setTimeout(() => setShow(true), 300);
+      // Immediately show modal to prevent CLS - no delay needed
+      setShow(true);
     }
   }, []);
 
@@ -25,8 +25,8 @@ export function AgeVerificationModal() {
     
     setIsClosing(true);
     
-    // Store verification in sessionStorage
-    sessionStorage.setItem("age_verified", "true");
+    // Store verification in localStorage (persists across sessions for better UX)
+    localStorage.setItem("age_verified", "true");
     
     // Smooth fade out before hiding
     setTimeout(() => {
@@ -46,11 +46,12 @@ export function AgeVerificationModal() {
     });
   };
 
-  // Don't render if not showing
+  // Don't render if not showing - prevents unnecessary DOM rendering
   if (!show) return null;
 
   return (
     <>
+      {/* Inline critical CSS for performance - prevents flash of unstyled content */}
       <style jsx>{`
         @keyframes fadeIn {
           from {

@@ -12,8 +12,24 @@ import { VotingPanel } from "@/components/pubs/voting-panel";
 import { canUseVoteBackend, getPubVoteStats } from "@/lib/supabase/votes";
 import { DEFAULT_VOTE_TOPICS } from "@/lib/votes/schema";
 import { getSeededVoteStats } from "@/lib/votes/fallback";
+import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 
 export const revalidate = 300;
+
+export async function generateStaticParams() {
+  const { getServerSupabaseClient } = await import("@/lib/supabase/server");
+  const supabase = getServerSupabaseClient();
+  
+  // Generate static params for top 100 pubs by review count and rating
+  const { data: pubs } = await supabase
+    .from("pubs")
+    .select("slug")
+    .eq("status", "operational")
+    .order("review_count", { ascending: false })
+    .limit(100);
+
+  return pubs?.map((pub) => ({ slug: pub.slug })) ?? [];
+}
 
 type TimeRange = {
   open: string;
@@ -101,6 +117,25 @@ export async function generateMetadata({
       title,
       description,
       type: "website",
+      url: `https://pubsinbangalore.com/pubs/${resolvedParams.slug}`,
+      locale: "en_IN",
+      siteName: "PubsInBangalore",
+      images: [
+        {
+          url: "https://pubsinbangalore.com/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: `${pub.name} - Pub in Bangalore`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["https://pubsinbangalore.com/og-image.png"],
+      creator: "@pubsinbangalore",
+      site: "@pubsinbangalore",
     },
   };
 }
@@ -134,18 +169,34 @@ export default async function PubDetailPage({
   const mapQuery = encodeURIComponent(`${pub.name} ${pub.locality_name ?? "Bengaluru"}`);
   const mapEmbedUrl = `https://maps.google.com/maps?q=${mapQuery}&output=embed`;
 
+  // Convert operating hours to proper schema.org format
+  const openingHoursSpecification = operatingHours
+    ? Object.entries(operatingHours).map(([dayOfWeek, timeRanges]) => {
+        const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        return timeRanges.map((timeRange) => ({
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: dayNames[parseInt(dayOfWeek)],
+          opens: timeRange.open,
+          closes: timeRange.close,
+        }));
+      }).flat()
+    : undefined;
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "BarOrPub",
     name: pub.name,
     url: `https://pubsinbangalore.com/pubs/${pub.slug}`,
     description: pub.description,
+    image: "https://pubsinbangalore.com/og-image.png", // Default image, can be replaced with actual pub image when available
     telephone: pub.phone ?? undefined,
     aggregateRating: pub.average_rating
       ? {
           "@type": "AggregateRating",
           ratingValue: pub.average_rating,
           reviewCount: pub.review_count ?? 0,
+          bestRating: "5",
+          worstRating: "1",
         }
       : undefined,
     address: {
@@ -158,7 +209,10 @@ export default async function PubDetailPage({
       pub.cost_for_two_min && pub.cost_for_two_max
         ? `₹${pub.cost_for_two_min} - ₹${pub.cost_for_two_max}`
         : undefined,
-    sameAs: pub.website_url ? [pub.website_url] : undefined,
+    openingHoursSpecification,
+    servesCuisine: "Indian, Continental",
+    acceptsReservations: "True",
+    sameAs: pub.website_url ? [pub.website_url, pub.google_maps_url] : [pub.google_maps_url],
   };
 
   const faqStructuredData = {
@@ -189,6 +243,30 @@ export default async function PubDetailPage({
     ],
   };
 
+  // Review schema for platform ratings
+  const reviewsStructuredData = pub.platform_ratings.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: pub.platform_ratings.map((rating, index) => ({
+      "@type": "Review",
+      position: index + 1,
+      author: {
+        "@type": "Organization",
+        name: rating.platform,
+      },
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: rating.rating,
+        bestRating: "5",
+        worstRating: "1",
+      },
+      itemReviewed: {
+        "@type": "BarOrPub",
+        name: pub.name,
+      },
+    })),
+  } : null;
+
   const nearbyPubs = pub.locality_slug
     ? (
         await getLocalityPageData(pub.locality_slug, {
@@ -203,6 +281,23 @@ export default async function PubDetailPage({
     .filter((attribute) => attribute.displayValue)
     .slice(0, 6);
 
+  const breadcrumbItems = [
+    { name: "Home", url: "/" },
+    { name: "Pubs", url: "/pubs" },
+  ];
+  
+  if (pub.locality_name && pub.locality_slug) {
+    breadcrumbItems.push({
+      name: pub.locality_name,
+      url: `/pubs/in/${pub.locality_slug}`,
+    });
+  }
+  
+  breadcrumbItems.push({
+    name: pub.name,
+    url: `/pubs/${pub.slug}`,
+  });
+
   return (
     <div className="space-y-10">
       <script
@@ -215,6 +310,15 @@ export default async function PubDetailPage({
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
       />
+      {reviewsStructuredData && (
+        <script
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewsStructuredData) }}
+        />
+      )}
+
+      <Breadcrumbs items={breadcrumbItems} />
 
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
