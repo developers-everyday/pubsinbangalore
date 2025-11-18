@@ -27,6 +27,24 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/pubs/in/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=43200",
+          },
+        ],
+      },
+      {
+        source: "/pubs/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=43200",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           {

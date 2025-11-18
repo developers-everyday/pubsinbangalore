@@ -23,16 +23,17 @@ export function VoteChips({ label, storageKey, initialOptions, onVote, helperTex
 
   useEffect(() => {
     if (!isBrowser) {
-      setSelectedId(null);
       return;
     }
-    const stored = window.sessionStorage.getItem(storageKey);
-    if (stored && initialOptions.some((option) => option.id === stored)) {
-      setSelectedId(stored);
-    } else {
-      setSelectedId(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const frame = window.requestAnimationFrame(() => {
+      const stored = window.sessionStorage.getItem(storageKey);
+      if (stored && initialOptions.some((option) => option.id === stored)) {
+        setSelectedId(stored);
+      } else {
+        setSelectedId(null);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [initialOptions, storageKey]);
 
   const computedOptions = useMemo(() => {

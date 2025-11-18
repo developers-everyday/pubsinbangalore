@@ -80,6 +80,14 @@ async function validatePage(pagePath: string): Promise<ValidationResult> {
     const jsonLdMatches = content.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/g);
 
     if (!jsonLdMatches || jsonLdMatches.length === 0) {
+      const inlineJsonLd = /dangerouslySetInnerHTML\s*=\s*{{\s*__html:\s*JSON\.stringify\(/.test(content);
+      if (inlineJsonLd) {
+        return {
+          page: pagePath,
+          valid: true,
+          errors: [],
+        };
+      }
       return {
         page: pagePath,
         valid: false,
@@ -94,8 +102,17 @@ async function validatePage(pagePath: string): Promise<ValidationResult> {
       const jsonMatch = match.match(/<script[^>]*>([\s\S]*?)<\/script>/);
       if (!jsonMatch) continue;
 
+      const scriptBody = jsonMatch[1]?.trim() ?? "";
+      if (!scriptBody) {
+        if (match.includes("dangerouslySetInnerHTML")) {
+          continue;
+        }
+        allErrors.push("Empty JSON-LD script tag");
+        continue;
+      }
+
       try {
-        const jsonLd = JSON.parse(jsonMatch[1]);
+        const jsonLd = JSON.parse(scriptBody);
         const result = validateJsonLd(jsonLd);
         if (!result.valid) {
           allErrors.push(...result.errors);

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { VoteStatsSnapshot, VoteTopicDefinition } from "@/lib/votes/schema";
+import { getSeededVoteStats } from "@/lib/votes/fallback";
 
 type ViewMode = "today" | "overall";
 
@@ -56,6 +57,31 @@ export function VotingPanel({
     }
     setVoterToken(token);
   }, [supabaseEnabled]);
+
+  // Fetch vote stats client-side if not provided
+  useEffect(() => {
+    if (initialStats || !supabaseEnabled) {
+      if (!initialStats && !supabaseEnabled) {
+        setStats(getSeededVoteStats(topics));
+      }
+      return;
+    }
+
+    // Fetch stats from API
+    fetch(`/api/pubs/${pubSlug}/votes`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch vote stats");
+        return res.json();
+      })
+      .then((data: VoteStatsSnapshot) => {
+        setStats(data);
+        setLastUpdated(data.lastUpdated);
+      })
+      .catch((error) => {
+        console.warn("Failed to load vote stats", error);
+        setStats(getSeededVoteStats(topics));
+      });
+  }, [pubSlug, supabaseEnabled, topics, initialStats]);
 
   // hydrate vote locks
   useEffect(() => {

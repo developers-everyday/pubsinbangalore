@@ -2,39 +2,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { SearchForm } from "@/components/search/search-form";
-import { LocalityFilters, type LocalityFilterState } from "@/components/search/locality-filters";
-import { PubCard } from "@/components/pubs/pub-card";
-import { getLocalities, getLocalityPageData } from "@/lib/supabase/queries";
+import { LocalityResults } from "@/components/search/locality-results";
+import { getLocalities, getLocalityBySlug, getLocalityPageData } from "@/lib/supabase/queries";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 
-export const revalidate = 300;
-
-const parseBudget = (
-  value: string | undefined
-): { bucket: LocalityFilterState["budget"]; minCost?: number; maxCost?: number } => {
-  switch (value) {
-    case "under1500":
-      return { bucket: "under1500", minCost: undefined, maxCost: 1500 };
-    case "1500-2500":
-      return { bucket: "1500-2500", minCost: 1500, maxCost: 2500 };
-    case "2500-4000":
-      return { bucket: "2500-4000", minCost: 2500, maxCost: 4000 };
-    case "4000plus":
-      return { bucket: "4000plus", minCost: 4000, maxCost: undefined };
-    default:
-      return { bucket: "any" };
-  }
-};
-
-const parseSort = (
-  value: string | undefined
-): LocalityFilterState["sort"] => {
-  if (value === "rating_asc" || value === "reviews_desc" || value === "cost_desc" || value === "cost_asc") {
-    return value;
-  }
-  return "rating_desc";
-};
+export const revalidate = 21600;
+export const dynamic = "force-static";
 
 export async function generateStaticParams() {
   const localities = await getLocalities();
@@ -43,24 +17,11 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ locality: string }>;
-  searchParams: Promise<{ q?: string; budget?: string; wifi?: string; valet?: string; redeemable?: string; sort?: string }>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const budget = parseBudget(resolvedSearchParams.budget);
-  const { locality: localityInfo } = await getLocalityPageData(resolvedParams.locality, {
-    search: resolvedSearchParams.q,
-    minCost: budget.minCost,
-    maxCost: budget.maxCost,
-    wifi: resolvedSearchParams.wifi === "true",
-    valet: resolvedSearchParams.valet === "true",
-    coverRedeemable: resolvedSearchParams.redeemable === "true",
-    sort: parseSort(resolvedSearchParams.sort),
-    limit: 12,
-  });
+  const localityInfo = await getLocalityBySlug(resolvedParams.locality);
 
   if (!localityInfo) {
     return {
@@ -107,38 +68,13 @@ export async function generateMetadata({
 
 export default async function LocalityPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locality: string }>;
-  searchParams: Promise<{
-    q?: string;
-    budget?: string;
-    wifi?: string;
-    valet?: string;
-    redeemable?: string;
-    sort?: string;
-  }>;
 }) {
   const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const budget = parseBudget(resolvedSearchParams.budget);
-  const sort = parseSort(resolvedSearchParams.sort);
-  const filterState: LocalityFilterState = {
-    budget: budget.bucket,
-    wifi: resolvedSearchParams.wifi === "true",
-    valet: resolvedSearchParams.valet === "true",
-    coverRedeemable: resolvedSearchParams.redeemable === "true",
-    sort,
-  };
-
   const { locality, pubs } = await getLocalityPageData(resolvedParams.locality, {
-    search: resolvedSearchParams.q,
-    minCost: budget.minCost,
-    maxCost: budget.maxCost,
-    wifi: filterState.wifi,
-    valet: filterState.valet,
-    coverRedeemable: filterState.coverRedeemable,
-    sort,
+    sort: "rating_desc",
+    limit: 120,
   });
 
   if (!locality) {
@@ -157,15 +93,6 @@ export default async function LocalityPage({
     })),
   };
 
-  const appliedFilters: string[] = [];
-  if (filterState.budget !== "any") {
-    const label = budgetOptionsMap[filterState.budget];
-    if (label) appliedFilters.push(label);
-  }
-  if (filterState.wifi) appliedFilters.push("WiFi available");
-  if (filterState.valet) appliedFilters.push("Valet service");
-  if (filterState.coverRedeemable) appliedFilters.push("Redeemable cover");
-
   const breadcrumbItems = [
     { name: "Home", url: "/" },
     { name: "Pubs", url: "/pubs" },
@@ -178,7 +105,7 @@ export default async function LocalityPage({
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      ></script>
 
       <Breadcrumbs items={breadcrumbItems} />
       <header className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -194,46 +121,10 @@ export default async function LocalityPage({
             Use the filters below to narrow down by budget, entry perks, or amenities.
           </p>
         </div>
-        <div className="flex flex-col gap-4">
-          <SearchForm placeholder={`Search within ${locality.name}`} />
-          <LocalityFilters state={filterState} />
-          {appliedFilters.length > 0 && (
-            <p className="text-xs uppercase tracking-wide text-emerald-600">
-              Active filters: {appliedFilters.join(" · ")}
-            </p>
-          )}
-          {resolvedSearchParams.q && (
-            <p className="text-sm text-slate-500">
-              Showing results for <span className="font-semibold">"{resolvedSearchParams.q}"</span>
-            </p>
-          )}
-        </div>
+        <SearchForm placeholder={`Search within ${locality.name}`} />
       </header>
 
-      <section className="space-y-6">
-        <h3 className="text-xl font-semibold text-slate-900">
-          {pubs.length} pub{pubs.length === 1 ? "" : "s"} in {locality.name}
-        </h3>
-        {pubs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-100 p-8 text-sm text-slate-600">
-            No pubs yet. Seed the `pubs` table via the ingestion CLI to populate this page.
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            {pubs.map((pub) => (
-              <PubCard key={pub.id} pub={pub} />
-            ))}
-          </div>
-        )}
-      </section>
+      <LocalityResults localityName={locality.name} pubs={pubs} />
     </div>
   );
 }
-
-const budgetOptionsMap: Record<LocalityFilterState["budget"], string> = {
-  any: "Any budget",
-  under1500: "Under ₹1,500",
-  "1500-2500": "₹1,500 – ₹2,500",
-  "2500-4000": "₹2,500 – ₹4,000",
-  "4000plus": "₹4,000+",
-};

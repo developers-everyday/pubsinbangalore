@@ -17,6 +17,7 @@ const hasSupabaseConfig = () =>
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 type VoteEventRow = Database["public"]["Tables"]["pub_vote_events"]["Row"];
+type VoteEventSummary = Pick<VoteEventRow, "topic" | "option_id" | "created_at">;
 
 type StatsOptions = {
   topics?: VoteTopicDefinition[];
@@ -41,7 +42,7 @@ const getStartOfTodayUtcIso = (): string => {
   return new Date(startOfDayUtcMillis).toISOString();
 };
 
-const aggregateVotes = (events: VoteEventRow[]) => {
+const aggregateVotes = (events: VoteEventSummary[]) => {
   const counts = new Map<string, number>();
   for (const event of events) {
     const key = `${event.topic}::${event.option_id}`;

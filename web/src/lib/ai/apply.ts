@@ -16,6 +16,8 @@ type AttributeValueSnapshot = Pick<
   | "rating_value"
 >;
 
+type PubAttributeEvidenceInsert = Database["public"]["Tables"]["pub_attribute_evidence"]["Insert"];
+
 function toJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value ?? null)) as Json;
 }
@@ -255,7 +257,7 @@ export async function applyAttributes(
   const payload = changes.map((change) => change.payload);
   const attributeIds = changes.map((change) => change.attribute_id);
 
-  const evidenceRows =
+  const evidenceRows: PubAttributeEvidenceInsert[] =
     evidence && metadataByCode.size > 0
       ? Object.entries(evidence)
           .flatMap(([code, detail]) => {

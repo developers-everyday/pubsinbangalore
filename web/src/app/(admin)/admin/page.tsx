@@ -8,25 +8,8 @@ import {
 } from "./actions";
 import { CsvDropzone } from "./csv-dropzone";
 import { getServiceSupabaseClient } from "@/lib/supabase/server";
-import type { Database, Json } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
-
-type PubAttributeRow = {
-  attribute_id: string;
-  boolean_value: boolean | null;
-  numeric_min: number | null;
-  numeric_max: number | null;
-  text_value: string | null;
-  tags_value: string[] | null;
-  schedule_value: Json | null;
-  rating_value: number | null;
-  attributes?: {
-    code: string | null;
-    label: string | null;
-    data_type: string | null;
-  } | null;
-};
 
 export default async function AdminDashboard() {
   try {

@@ -59,7 +59,7 @@ type NextChange = {
 };
 
 export function OperatingHoursCard({ hours }: { hours?: ScheduleData }) {
-  const defaultHours = useMemo(
+  const defaultHours = useMemo<ScheduleData>(
     () => ({
       0: [{ open: "12:00 PM", close: "1:00 AM", servingUntil: "12:00 AM" }],
       1: [{ open: "12:00 PM", close: "1:00 AM", servingUntil: "12:00 AM" }],
@@ -84,7 +84,14 @@ export function OperatingHoursCard({ hours }: { hours?: ScheduleData }) {
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   // Flatten today's ranges
-  const todaysRanges = schedule[todayIndex] || [];
+  const todaysRanges = useMemo(
+    () => {
+      const source = hours ?? defaultHours;
+      const ranges = source[todayIndex] ?? [];
+      return ranges.map((range) => ({ ...range }));
+    },
+    [defaultHours, hours, todayIndex]
+  );
 
   // Determine if open and when next change is
   let isOpen = false;
@@ -218,10 +225,10 @@ export function OperatingHoursCard({ hours }: { hours?: ScheduleData }) {
         </div>
       </div>
 
-      {/* Today's hours summary */}
+      {/* Today&apos;s hours summary */}
       <div className="mt-4 flex items-center justify-between">
         <div>
-          <div className="text-sm text-slate-500">Today's hours</div>
+          <div className="text-sm text-slate-500">Today&apos;s hours</div>
           <div className="font-medium">
             {todaysRanges.length ? (
               todaysRanges.map((r, idx) => (

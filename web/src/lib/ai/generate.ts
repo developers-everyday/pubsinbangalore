@@ -8,6 +8,7 @@ import type {
   AiResponse,
   AttributeEvidence,
   AttributeResult,
+  AttributeValue,
   DescriptionResult,
   EnrichmentResult,
 } from "./types";
@@ -17,8 +18,23 @@ const DescriptionSchema = z.object({
   highlights: z.array(z.string().min(3).max(80)).length(3),
 });
 
+const AttributeValueSchema: z.ZodType<AttributeValue> = z.union([
+  z.boolean(),
+  z.number(),
+  z.string(),
+  z.array(z.string()),
+  z
+    .object({
+      min: z.number().optional(),
+      max: z.number().optional(),
+    })
+    .passthrough(),
+  z.record(z.string(), z.unknown()),
+  z.null(),
+]);
+
 const AttributeEvidenceSchema = z.object({
-  value: z.unknown().optional(),
+  value: AttributeValueSchema.optional(),
   reasoning: z.string().optional(),
   citations: z
     .array(
@@ -36,7 +52,7 @@ const AttributeEvidenceSchema = z.object({
 });
 
 const AttributeSchema = z.object({
-  attributes: z.record(z.string(), z.unknown()).default({}),
+  attributes: z.record(z.string(), AttributeValueSchema).default({}),
   attributeEvidence: z.record(z.string(), AttributeEvidenceSchema).default({}),
 });
 

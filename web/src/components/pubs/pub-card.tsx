@@ -7,12 +7,6 @@ interface PubCardProps {
   pub: PubSummary;
 }
 
-const ratingLabel = (rating: number | null, reviews: number | null) => {
-  if (!rating) return "No rating yet";
-  const reviewText = reviews ? `${reviews.toLocaleString()} reviews` : "Few reviews";
-  return `${rating.toFixed(1)} • ${reviewText}`;
-};
-
 const formatCost = (min: number | null, max: number | null) => {
   if (min && max) return `₹${min.toLocaleString()} – ₹${max.toLocaleString()}`;
   if (min) return `From ₹${min.toLocaleString()}`;

@@ -3,24 +3,24 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { PubCard } from "@/components/pubs/pub-card";
-import { getLocalityPageData, getPubDetail } from "@/lib/supabase/queries";
+import { getPubDetail } from "@/lib/supabase/queries";
 import { PlatformRatings } from "@/components/pubs/platform-ratings";
 import { ShareLinkSection } from "@/components/pubs/share-link-section";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
 import { OperatingHoursCard } from "@/components/pubs/operating-hours-card";
 import { VotingPanel } from "@/components/pubs/voting-panel";
-import { canUseVoteBackend, getPubVoteStats } from "@/lib/supabase/votes";
+import { canUseVoteBackend } from "@/lib/supabase/votes";
 import { DEFAULT_VOTE_TOPICS } from "@/lib/votes/schema";
-import { getSeededVoteStats } from "@/lib/votes/fallback";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
+import { NearbyPubs } from "@/components/pubs/nearby-pubs";
 
-export const revalidate = 300;
+export const revalidate = 21600;
+export const dynamic = "force-static";
 
 export async function generateStaticParams() {
   const { getServerSupabaseClient } = await import("@/lib/supabase/server");
   const supabase = getServerSupabaseClient();
-  
-  // Generate static params for top 100 pubs by review count and rating
+
   const { data: pubs } = await supabase
     .from("pubs")
     .select("slug")
@@ -94,6 +94,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const resolvedParams = await params;
+  // Use cached pub data - will be shared with page component via React.cache
   const pub = await getPubDetail(resolvedParams.slug);
   if (!pub) {
     return {
@@ -153,18 +154,8 @@ export default async function PubDetailPage({
   }
 
   const operatingHours = transformOperatingHours(pub.operating_hours_raw as Record<string, string> | null);
+  // Vote stats are loaded client-side to avoid blocking server render
   const voteBackendEnabled = await canUseVoteBackend();
-  let voteStats: Awaited<ReturnType<typeof getPubVoteStats>> = null;
-  if (voteBackendEnabled && pub.id) {
-    try {
-      voteStats = await getPubVoteStats(pub.id);
-    } catch (error) {
-      console.warn("Unable to load vote stats", error);
-      voteStats = getSeededVoteStats(DEFAULT_VOTE_TOPICS);
-    }
-  } else {
-    voteStats = getSeededVoteStats(DEFAULT_VOTE_TOPICS);
-  }
 
   const mapQuery = encodeURIComponent(`${pub.name} ${pub.locality_name ?? "Bengaluru"}`);
   const mapEmbedUrl = `https://maps.google.com/maps?q=${mapQuery}&output=embed`;
@@ -267,15 +258,6 @@ export default async function PubDetailPage({
     })),
   } : null;
 
-  const nearbyPubs = pub.locality_slug
-    ? (
-        await getLocalityPageData(pub.locality_slug, {
-          limit: 6,
-        })
-      ).pubs
-        .filter((candidate) => candidate.slug !== pub.slug)
-        .slice(0, 3)
-    : [];
 
   const highlightAttributes = pub.attributes
     .filter((attribute) => attribute.displayValue)
@@ -304,18 +286,18 @@ export default async function PubDetailPage({
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      ></script>
       <script
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
-      />
+      ></script>
       {reviewsStructuredData && (
         <script
           type="application/ld+json"
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewsStructuredData) }}
-        />
+        ></script>
       )}
 
       <Breadcrumbs items={breadcrumbItems} />
@@ -414,7 +396,7 @@ export default async function PubDetailPage({
       <VotingPanel
         pubSlug={pub.slug}
         topics={DEFAULT_VOTE_TOPICS}
-        initialStats={voteStats}
+        initialStats={null}
         supabaseEnabled={voteBackendEnabled}
       />
 
@@ -453,24 +435,11 @@ export default async function PubDetailPage({
         </div>
       </section>
 
-      {nearbyPubs.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">More in {pub.locality_name ?? "Bangalore"}</h2>
-            <Link
-              href={`/pubs/in/${pub.locality_slug}`}
-              className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
-            >
-              View locality guide →
-            </Link>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {nearbyPubs.map((nearby) => (
-              <PubCard key={nearby.id} pub={nearby} />
-            ))}
-          </div>
-        </section>
-      )}
+      <NearbyPubs
+        localitySlug={pub.locality_slug ?? null}
+        localityName={pub.locality_name ?? null}
+        currentSlug={pub.slug}
+      />
     </div>
   );
 }

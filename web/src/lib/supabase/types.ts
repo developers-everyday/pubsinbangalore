@@ -65,6 +65,11 @@ export type Database = {
           valet_available: boolean | null;
           happy_hours_note: string | null;
           operating_hours_raw: Json | null;
+          overall_rating_average: number | null;
+          overall_rating_min: number | null;
+          overall_rating_max: number | null;
+          overall_rating_details: string | null;
+          ratings_last_synced_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -91,6 +96,11 @@ export type Database = {
           valet_available?: boolean | null;
           happy_hours_note?: string | null;
           operating_hours_raw?: Json | null;
+          overall_rating_average?: number | null;
+          overall_rating_min?: number | null;
+          overall_rating_max?: number | null;
+          overall_rating_details?: string | null;
+          ratings_last_synced_at?: string | null;
         };
         Update: {
           id?: string;
@@ -115,6 +125,11 @@ export type Database = {
           valet_available?: boolean | null;
           happy_hours_note?: string | null;
           operating_hours_raw?: Json | null;
+          overall_rating_average?: number | null;
+          overall_rating_min?: number | null;
+          overall_rating_max?: number | null;
+          overall_rating_details?: string | null;
+          ratings_last_synced_at?: string | null;
         };
         Relationships: [];
       };
@@ -145,6 +160,59 @@ export type Database = {
           },
           {
             foreignKeyName: "pub_localities_pub_id_fkey";
+            columns: ["pub_id"];
+            referencedRelation: "pubs";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      pub_attribute_evidence: {
+        Row: {
+          pub_id: string;
+          attribute_id: string;
+          source_url: string;
+          source_title: string | null;
+          source_publisher: string | null;
+          source_snippet: string | null;
+          provider: string | null;
+          confidence: number | null;
+          retrieved_at: string;
+          verified_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          pub_id: string;
+          attribute_id: string;
+          source_url: string;
+          source_title?: string | null;
+          source_publisher?: string | null;
+          source_snippet?: string | null;
+          provider?: string | null;
+          confidence?: number | null;
+          retrieved_at?: string;
+          verified_at?: string | null;
+        };
+        Update: {
+          pub_id?: string;
+          attribute_id?: string;
+          source_url?: string;
+          source_title?: string | null;
+          source_publisher?: string | null;
+          source_snippet?: string | null;
+          provider?: string | null;
+          confidence?: number | null;
+          retrieved_at?: string;
+          verified_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pub_attribute_evidence_attribute_id_fkey";
+            columns: ["attribute_id"];
+            referencedRelation: "attributes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pub_attribute_evidence_pub_id_fkey";
             columns: ["pub_id"];
             referencedRelation: "pubs";
             referencedColumns: ["id"];

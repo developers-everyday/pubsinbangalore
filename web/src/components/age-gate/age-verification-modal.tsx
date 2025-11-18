@@ -15,8 +15,9 @@ export function AgeVerificationModal() {
     // Check localStorage for age verification (persists across sessions)
     const verified = localStorage.getItem("age_verified");
     if (!verified) {
-      // Immediately show modal to prevent CLS - no delay needed
-      setShow(true);
+      // Schedule state update outside the effect tick to appease React Compiler
+      const raf = window.requestAnimationFrame(() => setShow(true));
+      return () => window.cancelAnimationFrame(raf);
     }
   }, []);
 

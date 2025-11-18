@@ -57,6 +57,11 @@ export interface PubSummary {
   attributeCodes?: string[];
 }
 
+type AttributeValueRow = {
+  attributes?: { code?: string | null } | null;
+  boolean_value?: boolean | null;
+};
+
 export interface PubDetail extends PubSummary {
   phone: string | null;
   status: string;
@@ -116,6 +121,24 @@ type SamplePayload = {
   imported: SamplePub[];
 };
 
+type PubWithRelations = Database["public"]["Tables"]["pubs"]["Row"] & {
+  pub_localities: Array<
+    Database["public"]["Tables"]["pub_localities"]["Row"] & {
+      localities: Locality | null;
+    }
+  > | null;
+  pub_attribute_values: Array<
+    Database["public"]["Tables"]["pub_attribute_values"]["Row"] & {
+      attributes: {
+        code: string | null;
+        label: string | null;
+        data_type: string | null;
+      } | null;
+    }
+  > | null;
+  pub_platform_ratings: PlatformRating[] | null;
+};
+
 const DEFAULT_OPTIONS: Required<Pick<LocalityQueryOptions, "sort" | "limit">> = {
   sort: "rating_desc",
   limit: 60,
@@ -162,6 +185,20 @@ const withLocalityMetadata = (pub: PubSummary, locality: Pick<Locality, "slug" |
   ...pub,
   locality_slug: locality?.slug ?? null,
   locality_name: locality?.name ?? null,
+});
+
+const formatLocalityName = (slug: string) =>
+  slug
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+
+const createLocalityFromSlug = (slug: string): Locality => ({
+  id: slug,
+  name: formatLocalityName(slug),
+  slug,
+  city: "Bengaluru",
+  state: "Karnataka",
 });
 
 const serialiseAttributeValue = (value: PubAttribute["value"], type: string): string | null => {
@@ -267,7 +304,7 @@ async function fetchPubsForLocality(
     // Extract attribute codes for display (only boolean attributes that are true)
     const attributeCodes: string[] = [];
     if (row.pub_attribute_values && Array.isArray(row.pub_attribute_values)) {
-      row.pub_attribute_values.forEach((av: any) => {
+      (row.pub_attribute_values as AttributeValueRow[]).forEach((av) => {
         if (av.attributes?.code && av.boolean_value === true) {
           attributeCodes.push(av.attributes.code);
         }
@@ -311,36 +348,17 @@ export const getLocalities = cache(async (): Promise<Locality[]> => {
   for (const entry of sample.imported) {
     if (!entry.locality_slug) continue;
     if (!seen.has(entry.locality_slug)) {
-      const name = entry.locality_slug
-        .split("-")
-        .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-        .join(" ");
-      seen.set(entry.locality_slug, {
-        id: entry.locality_slug,
-        name,
-        slug: entry.locality_slug,
-        city: "Bengaluru",
-        state: "Karnataka",
-      });
+      seen.set(entry.locality_slug, createLocalityFromSlug(entry.locality_slug));
     }
   }
   return Array.from(seen.values());
 });
 
-export async function getLocalityPageData(
-  localitySlug: string,
-  options?: LocalityQueryOptions
-) {
-  const mergedOptions: LocalityQueryOptions = {
-    ...options,
-    sort: options?.sort ?? DEFAULT_OPTIONS.sort,
-    limit: options?.limit ?? DEFAULT_OPTIONS.limit,
-  };
-
+export const getLocalityBySlug = cache(async (localitySlug: string): Promise<Locality | null> => {
   if (hasSupabaseConfig()) {
     try {
       const client = getServerSupabaseClient();
-      const { data: locality, error } = await client
+      const { data, error } = await client
         .from("localities")
         .select("id, name, slug, city, state")
         .eq("slug", localitySlug)
@@ -350,10 +368,44 @@ export async function getLocalityPageData(
         throw new Error(error.message);
       }
 
-      if (!locality) {
-        return { locality: null as Locality | null, pubs: [] as PubSummary[] };
+      if (data) {
+        return {
+          id: data.id,
+          name: data.name,
+          slug: data.slug,
+          city: data.city,
+          state: data.state,
+        };
       }
+    } catch (error) {
+      console.warn("Supabase locality lookup failed", error);
+    }
+  }
 
+  const sample = await loadSampleData();
+  if (!sample) return null;
+  const hasLocality = sample.imported.some((pub) => pub.locality_slug === localitySlug);
+  if (!hasLocality) return null;
+  return createLocalityFromSlug(localitySlug);
+});
+
+export const getLocalityPageData = cache(async function getLocalityPageData(
+  localitySlug: string,
+  options?: LocalityQueryOptions
+) {
+  const mergedOptions: LocalityQueryOptions = {
+    ...options,
+    sort: options?.sort ?? DEFAULT_OPTIONS.sort,
+    limit: options?.limit ?? DEFAULT_OPTIONS.limit,
+  };
+
+  const locality = await getLocalityBySlug(localitySlug);
+
+  // Only query Supabase if locality has a real UUID (from DB), not a fallback slug
+  // Fallback localities have id === slug, which will cause UUID errors
+  if (locality && hasSupabaseConfig() && locality.id !== localitySlug) {
+    try {
+      const client = getServerSupabaseClient();
       const pubs = await fetchPubsForLocality(client, locality, mergedOptions);
       return { locality, pubs };
     } catch (error) {
@@ -363,20 +415,10 @@ export async function getLocalityPageData(
 
   const sample = await loadSampleData();
   if (!sample) {
-    return { locality: null as Locality | null, pubs: [] as PubSummary[] };
+    return { locality, pubs: [] as PubSummary[] };
   }
 
-  const localityName = localitySlug
-    .split("-")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-  const locality: Locality = {
-    id: localitySlug,
-    name: localityName,
-    slug: localitySlug,
-    city: "Bengaluru",
-    state: "Karnataka",
-  };
+  const resolvedLocality = locality ?? createLocalityFromSlug(localitySlug);
 
   const pubs = sample.imported
     .filter((pub) => pub.locality_slug === localitySlug)
@@ -423,8 +465,8 @@ export async function getLocalityPageData(
       stag_entry_policy: pub.stag_entry_policy ?? null,
       couples_entry_policy: pub.couples_entry_policy ?? null,
       happy_hours_note: pub.happy_hours_note ?? null,
-      locality_slug: locality.slug,
-      locality_name: locality.name,
+      locality_slug: resolvedLocality.slug,
+      locality_name: resolvedLocality.name,
       attributeCodes: [],
     }));
 
@@ -445,12 +487,12 @@ export async function getLocalityPageData(
   });
 
   return {
-    locality,
+    locality: resolvedLocality,
     pubs: sorted.slice(0, mergedOptions.limit ?? DEFAULT_OPTIONS.limit),
   };
-}
+});
 
-export async function getPubDetail(slug: string): Promise<PubDetail | null> {
+export const getPubDetail = cache(async function getPubDetail(slug: string): Promise<PubDetail | null> {
   if (hasSupabaseConfig()) {
     try {
       const client = getServerSupabaseClient();
@@ -494,10 +536,12 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
 
       if (!data) return null;
 
-      const localitySlug = data.pub_localities?.[0]?.localities?.slug ?? null;
-      const localityName = data.pub_localities?.[0]?.localities?.name ?? null;
+      const record = data as PubWithRelations;
 
-      const attributes: PubAttribute[] = (data.pub_attribute_values ?? [])
+      const localitySlug = record.pub_localities?.[0]?.localities?.slug ?? null;
+      const localityName = record.pub_localities?.[0]?.localities?.name ?? null;
+
+      const attributes: PubAttribute[] = (record.pub_attribute_values ?? [])
         .map((entry) => {
           const attributeMeta = entry.attributes;
           if (!attributeMeta?.code) return null;
@@ -544,7 +588,7 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
         })
         .filter((item): item is PubAttribute => Boolean(item));
 
-      const platformRatings: PlatformRating[] = (data.pub_platform_ratings ?? []).map((pr) => ({
+      const platformRatings: PlatformRating[] = (record.pub_platform_ratings ?? []).map((pr) => ({
         platform: pr.platform,
         rating: pr.rating,
         review_count: pr.review_count,
@@ -555,35 +599,35 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
       }));
 
       return {
-        id: data.id,
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        google_maps_url: data.google_maps_url,
-        website_url: data.website_url,
-        phone: data.phone,
-        status: data.status,
-        average_rating: data.average_rating,
-        review_count: data.review_count,
-        cost_for_two_min: data.cost_for_two_min,
-        cost_for_two_max: data.cost_for_two_max,
-        cover_charge_min: data.cover_charge_min,
-        cover_charge_max: data.cover_charge_max,
-        cover_charge_redeemable: data.cover_charge_redeemable,
-        wifi_available: data.wifi_available,
-        valet_available: data.valet_available,
-        stag_entry_policy: data.stag_entry_policy,
-        couples_entry_policy: data.couples_entry_policy,
-        happy_hours_note: data.happy_hours_note,
+        id: record.id,
+        name: record.name,
+        slug: record.slug,
+        description: record.description,
+        google_maps_url: record.google_maps_url,
+        website_url: record.website_url,
+        phone: record.phone,
+        status: record.status,
+        average_rating: record.average_rating,
+        review_count: record.review_count,
+        cost_for_two_min: record.cost_for_two_min,
+        cost_for_two_max: record.cost_for_two_max,
+        cover_charge_min: record.cover_charge_min,
+        cover_charge_max: record.cover_charge_max,
+        cover_charge_redeemable: record.cover_charge_redeemable,
+        wifi_available: record.wifi_available,
+        valet_available: record.valet_available,
+        stag_entry_policy: record.stag_entry_policy,
+        couples_entry_policy: record.couples_entry_policy,
+        happy_hours_note: record.happy_hours_note,
         locality_slug: localitySlug,
         locality_name: localityName,
-        operating_hours_raw: (data.operating_hours_raw as Record<string, string> | null) ?? null,
+        operating_hours_raw: (record.operating_hours_raw as Record<string, string> | null) ?? null,
         attributes,
         platform_ratings: platformRatings,
-        overall_rating_average: data.overall_rating_average ?? null,
-        overall_rating_min: data.overall_rating_min ?? null,
-        overall_rating_max: data.overall_rating_max ?? null,
-        overall_rating_details: data.overall_rating_details ?? null,
+        overall_rating_average: record.overall_rating_average ?? null,
+        overall_rating_min: record.overall_rating_min ?? null,
+        overall_rating_max: record.overall_rating_max ?? null,
+        overall_rating_details: record.overall_rating_details ?? null,
       };
     } catch (error) {
       console.warn("Supabase pub detail fallback", error);
@@ -632,7 +676,7 @@ export async function getPubDetail(slug: string): Promise<PubDetail | null> {
     overall_rating_max: null,
     overall_rating_details: null,
   };
-}
+});
 
 export async function searchPubs(
   query: string,
