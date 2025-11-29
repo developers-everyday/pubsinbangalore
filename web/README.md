@@ -98,8 +98,6 @@ Row-level security is enabled for the main tables. Public reads are allowed, whi
 - `scripts/import-pubs.ts` — Node CLI to ingest cleaned data
 - `../db/` — SQL schema and seed files shared with Supabase
 - `../docs/` — Data taxonomy and ingestion rules referenced by the tooling
-- `src/components/pubs/vote-chips.tsx` — client-only voting chips (stubbed analytics) used in entry/pricing UI
-
 ## Next Phases
 
 - Build locality and pub detail routes with ISR + JSON-LD

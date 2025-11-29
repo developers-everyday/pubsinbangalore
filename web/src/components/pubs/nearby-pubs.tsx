@@ -14,11 +14,9 @@ interface NearbyPubsProps {
 
 export function NearbyPubs({ localitySlug, localityName, currentSlug }: NearbyPubsProps) {
   const [pubs, setPubs] = useState<PubSummary[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!localitySlug) {
-      setLoading(false);
       return;
     }
 
@@ -36,13 +34,10 @@ export function NearbyPubs({ localitySlug, localityName, currentSlug }: NearbyPu
       })
       .catch((error) => {
         console.warn("Failed to load nearby pubs", error);
-      })
-      .finally(() => {
-        setLoading(false);
       });
   }, [localitySlug, currentSlug]);
 
-  if (loading || pubs.length === 0) {
+  if (!localitySlug || pubs.length === 0) {
     return null;
   }
 

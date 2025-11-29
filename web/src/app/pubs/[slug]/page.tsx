@@ -2,15 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
-import { PubCard } from "@/components/pubs/pub-card";
 import { getPubDetail } from "@/lib/supabase/queries";
 import { PlatformRatings } from "@/components/pubs/platform-ratings";
 import { ShareLinkSection } from "@/components/pubs/share-link-section";
 import { getCanonicalUrl } from "@/lib/utils/canonical";
 import { OperatingHoursCard } from "@/components/pubs/operating-hours-card";
-import { VotingPanel } from "@/components/pubs/voting-panel";
-import { canUseVoteBackend } from "@/lib/supabase/votes";
-import { DEFAULT_VOTE_TOPICS } from "@/lib/votes/schema";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { NearbyPubs } from "@/components/pubs/nearby-pubs";
 
@@ -154,8 +150,6 @@ export default async function PubDetailPage({
   }
 
   const operatingHours = transformOperatingHours(pub.operating_hours_raw as Record<string, string> | null);
-  // Vote stats are loaded client-side to avoid blocking server render
-  const voteBackendEnabled = await canUseVoteBackend();
 
   const mapQuery = encodeURIComponent(`${pub.name} ${pub.locality_name ?? "Bengaluru"}`);
   const mapEmbedUrl = `https://maps.google.com/maps?q=${mapQuery}&output=embed`;
@@ -392,13 +386,6 @@ export default async function PubDetailPage({
           </div>
         </section>
       )}
-
-      <VotingPanel
-        pubSlug={pub.slug}
-        topics={DEFAULT_VOTE_TOPICS}
-        initialStats={null}
-        supabaseEnabled={voteBackendEnabled}
-      />
 
       {pub.overall_rating_details && (
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
